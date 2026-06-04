@@ -3,18 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const steps = [
   {
     step: "1",
-    title: "Sample dashboard (what you see now)",
-    body: "Demo cards show how opportunities look for beauty creators. This is not from your URLs."
+    title: "Set APP_OWNER_USER_ID in Vercel",
+    body: "Create a Supabase Auth user, copy UUID into Vercel env, redeploy. See docs/REAL_DATA.md."
   },
   {
     step: "2",
-    title: "Analyze your comments (ready today)",
-    body: "Paste real comments under “Analyze your comments”. The app scores the topic and suggests content."
+    title: "Paste comments or upload Instagram export",
+    body: "Your analysis saves to Supabase and appears under Saved opportunities after refresh."
   },
   {
     step: "3",
-    title: "Auto-pull from URLs (setup required)",
-    body: "YouTube/TikTok/Instagram ingest APIs exist but need Inngest + auth. No one-click URL box yet."
+    title: "YouTube/TikTok URLs (later)",
+    body: "Needs Inngest + a worker with scrape tools. Charts below may still show demo data until phase B."
   }
 ];
 

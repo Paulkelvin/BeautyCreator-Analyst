@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Database, FileUp, LineChart, Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Database, Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
+import { InstagramUpload } from "@/components/dashboard/instagram-upload";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { HowItWorks } from "@/components/dashboard/how-it-works";
 import { OpportunityCard } from "@/components/dashboard/opportunity-card";
@@ -118,38 +119,22 @@ export default async function DashboardPage() {
             yet. Use &quot;Analyze your comments&quot; above for now.
           </p>
         </div>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {[
-            {
-              title: "YouTube extraction",
-              description: "Queue automatic collection of titles, URLs, channel metadata, counts, comments, likes, dates, and replies.",
-              icon: Database,
-              endpoint: "POST /api/ingest/youtube"
-            },
-            {
-              title: "TikTok extraction",
-              description: "Queue open-source extraction for video metadata and audience comments with engagement metrics.",
-              icon: LineChart,
-              endpoint: "POST /api/ingest/tiktok"
-            },
-            {
-              title: "Instagram upload",
-              description: "Upload CSV, XLSX, or JSON exports and normalize them to the unified conversation schema.",
-              icon: FileUp,
-              endpoint: "POST /api/ingest/instagram-upload"
-            }
-          ].map((source) => (
-            <Card key={source.title}>
-              <CardHeader>
-                <source.icon className="h-7 w-7 text-violet-600" />
-                <CardTitle>{source.title}</CardTitle>
-                <CardDescription>{source.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <code className="rounded-lg bg-slate-950 px-3 py-2 text-xs text-white">{source.endpoint}</code>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <InstagramUpload />
+          <Card>
+            <CardHeader>
+              <Database className="h-7 w-7 text-violet-600" />
+              <CardTitle>YouTube / TikTok URLs</CardTitle>
+              <CardDescription>
+                Automatic comment extraction requires Inngest plus CLI tools on a worker (not available on
+                default Vercel). Use paste-comments above or Instagram upload for now.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs text-slate-600">
+              <code className="block rounded-lg bg-slate-950 px-3 py-2 text-white">POST /api/ingest/youtube</code>
+              <code className="block rounded-lg bg-slate-950 px-3 py-2 text-white">POST /api/ingest/tiktok</code>
+            </CardContent>
+          </Card>
         </div>
       </section>
 

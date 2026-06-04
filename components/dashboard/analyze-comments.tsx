@@ -10,6 +10,8 @@ import { platforms, type Platform } from "@/lib/types";
 type AnalysisResponse = {
   title: string;
   description: string;
+  persisted?: boolean;
+  opportunityId?: string;
   scores: {
     demandScore: number;
     gapScore: number;
@@ -41,11 +43,13 @@ export function AnalyzeComments() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function handleAnalyze(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
     setResult(null);
 
     const lines = commentsText
@@ -88,15 +92,29 @@ export function AnalyzeComments() {
       const response = await fetch("/api/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), comments })
+        body: JSON.stringify({ topic: topic.trim(), comments, persist: true })
       });
 
-      const payload = (await response.json()) as AnalysisResponse & { error?: string };
+      const payload = (await response.json()) as AnalysisResponse & {
+        error?: string;
+        persisted?: boolean;
+        opportunityId?: string;
+      };
       if (!response.ok) {
         throw new Error(payload.error ?? "Analysis failed.");
       }
 
       setResult(payload);
+      if (payload.persisted) {
+        setMessage(
+          "Saved to your dashboard. Refreshing in a moment to show your real opportunities…"
+        );
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setMessage(
+          "Analysis complete. To save to the dashboard, set APP_OWNER_USER_ID in Vercel (see docs/REAL_DATA.md)."
+        );
+      }
       document.getElementById("analysis-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Analysis failed.");
@@ -174,6 +192,9 @@ export function AnalyzeComments() {
               <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
                 {error}
               </p>
+            ) : null}
+            {message ? (
+              <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</p>
             ) : null}
 
             <Button type="submit" size="lg" disabled={loading}>

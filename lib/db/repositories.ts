@@ -1,6 +1,9 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
 import { type CommentUnderstanding, type NormalizedComment, type Opportunity } from "@/lib/types";
+
+type AnalysisResult = Awaited<ReturnType<typeof runOpportunityAnalysis>>;
 
 /** Ensures a profiles row exists (dev x-user-id or service-role ingest before Auth signup). */
 export async function ensureProfile(userId: string, email?: string | null) {
@@ -109,6 +112,76 @@ export async function persistCommentUnderstanding(input: {
   if (error) {
     throw error;
   }
+}
+
+export async function persistOpportunityAnalysis({
+  userId,
+  analysis
+}: {
+  userId: string;
+  analysis: AnalysisResult;
+}) {
+  await ensureProfile(userId);
+  const supabase = createSupabaseAdminClient();
+
+  const recommendedTypes = [
+    ...analysis.recommendations.videoIdeas.slice(0, 2),
+    ...analysis.recommendations.blogTopics.slice(0, 1),
+    ...analysis.recommendations.shortFormContent.slice(0, 1)
+  ];
+
+  const { data: opportunity, error } = await supabase
+    .from("opportunities")
+    .insert({
+      user_id: userId,
+      title: analysis.title,
+      description: analysis.description,
+      demand_score: analysis.scores.demandScore,
+      gap_score: analysis.scores.gapScore,
+      commercial_score: analysis.scores.commercialScore,
+      momentum_score: analysis.scores.momentumScore,
+      strategic_fit_score: analysis.scores.strategicFitScore,
+      actionability_score: analysis.scores.actionabilityScore,
+      difficulty_score: analysis.scores.difficultyScore,
+      competition_score: analysis.scores.competitionScore,
+      confidence_score: analysis.scores.confidenceScore,
+      opportunity_score: analysis.scores.opportunityScore,
+      audience_segments: analysis.audienceSegments,
+      trend_classification: analysis.trend.classification,
+      recommended_content_types: recommendedTypes,
+      reasoning: {
+        signals: analysis.signals,
+        competition: analysis.competition,
+        whiteSpace: analysis.whiteSpace
+      }
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const { error: recError } = await supabase.from("content_recommendations").insert({
+    user_id: userId,
+    opportunity_id: opportunity.id,
+    blog_topics: analysis.recommendations.blogTopics,
+    seo_clusters: analysis.recommendations.seoClusters,
+    video_ideas: analysis.recommendations.videoIdeas,
+    short_form_content: analysis.recommendations.shortFormContent,
+    faqs: analysis.recommendations.faqs,
+    email_ideas: analysis.recommendations.emailIdeas,
+    lead_magnets: analysis.recommendations.leadMagnets,
+    product_ideas: analysis.recommendations.productIdeas,
+    landing_page_ideas: analysis.recommendations.landingPageIdeas,
+    social_post_ideas: analysis.recommendations.socialPostIdeas
+  });
+
+  if (recError) {
+    throw recError;
+  }
+
+  return { opportunityId: String(opportunity.id) };
 }
 
 export async function getDashboardData() {

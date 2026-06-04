@@ -27,6 +27,8 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: optionalString,
   INNGEST_EVENT_KEY: optionalString,
   INNGEST_SIGNING_KEY: optionalString,
+  /** Supabase Auth user UUID for single-tenant saves (see docs/REAL_DATA.md) */
+  APP_OWNER_USER_ID: optionalString,
   YOUTUBE_COMMENT_DOWNLOADER_COMMAND: z.string().default("youtube-comment-downloader"),
   TIKTOK_EXTRACTOR_COMMAND: z.string().default("tiktok-scraper")
 });

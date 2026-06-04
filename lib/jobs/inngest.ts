@@ -1,6 +1,12 @@
 import { Inngest } from "inngest";
 import { understandComment } from "@/lib/ai/comment-understanding";
-import { createSource, persistCommentUnderstanding, persistNormalizedComments } from "@/lib/db/repositories";
+import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
+import {
+  createSource,
+  persistCommentUnderstanding,
+  persistNormalizedComments,
+  persistOpportunityAnalysis
+} from "@/lib/db/repositories";
 import { extractTikTokComments } from "@/lib/ingestion/tiktok";
 import { extractYouTubeComments } from "@/lib/ingestion/youtube";
 import { type NormalizedComment } from "@/lib/types";
@@ -14,6 +20,7 @@ type UploadedCommentsEvent = {
   fileName: string;
   storagePath?: string | null;
   comments: NormalizedComment[];
+  topic?: string;
 };
 
 type ExternalSourceEvent = {
@@ -22,6 +29,7 @@ type ExternalSourceEvent = {
   url: string;
   limit?: number;
   name?: string;
+  topic?: string;
 };
 
 type PersistedCommentRow = {
@@ -32,6 +40,8 @@ export const ingestUploadedComments = inngest.createFunction(
   { id: "ingest-uploaded-comments", triggers: { event: "comments/uploaded" } },
   async ({ event, step }) => {
     const data = event.data as UploadedCommentsEvent;
+    const topic = data.topic ?? data.name;
+
     const sourceId = await step.run("create upload source", () =>
       createSource({
         userId: data.userId,
@@ -59,7 +69,16 @@ export const ingestUploadedComments = inngest.createFunction(
       );
     });
 
-    return { sourceId, comments: inserted.length };
+    const opportunity = await step.run("score and save opportunity", async () => {
+      if (data.comments.length === 0) {
+        return null;
+      }
+
+      const analysis = await runOpportunityAnalysis({ topic, comments: data.comments });
+      return persistOpportunityAnalysis({ userId: data.userId, analysis });
+    });
+
+    return { sourceId, comments: inserted.length, opportunityId: opportunity?.opportunityId };
   }
 );
 
@@ -89,7 +108,26 @@ export const ingestExternalSource = inngest.createFunction(
       persistNormalizedComments({ userId: data.userId, sourceId, comments })
     );
 
-    return { sourceId, comments: inserted.length };
+    await step.run("understand comments", async () => {
+      await Promise.all(
+        (inserted as PersistedCommentRow[]).map(async (row, index) => {
+          const understanding = await understandComment(comments[index]);
+          await persistCommentUnderstanding({ commentId: row.id, understanding });
+        })
+      );
+    });
+
+    const topic = data.topic ?? data.name ?? comments[0]?.contentTitle ?? "Imported audience topic";
+    const opportunity = await step.run("score and save opportunity", async () => {
+      if (comments.length === 0) {
+        return null;
+      }
+
+      const analysis = await runOpportunityAnalysis({ topic, comments });
+      return persistOpportunityAnalysis({ userId: data.userId, analysis });
+    });
+
+    return { sourceId, comments: inserted.length, opportunityId: opportunity?.opportunityId };
   }
 );
 

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { understandComment } from "@/lib/ai/comment-understanding";
-import { calculateCompetitionMetrics, calculateSignals } from "@/lib/intelligence/signals";
-import { calculateOpportunityScore, defaultScoringWeights } from "@/lib/intelligence/scoring";
-import { calculateTrendSnapshot } from "@/lib/intelligence/trends";
-import { discoverWhiteSpace, generateContentRecommendations } from "@/lib/intelligence/recommendations";
+import { getAppOwnerUserId } from "@/lib/auth";
+import { persistOpportunityAnalysis } from "@/lib/db/repositories";
+import { env } from "@/lib/env";
+import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
 import { normalizedCommentSchema } from "@/lib/ingestion/normalization";
 
 export const runtime = "nodejs";
@@ -22,43 +21,48 @@ const schema = z.object({
       previousVelocity: z.number().optional()
     })
     .optional(),
-  weights: z.record(z.string(), z.number()).optional()
+  weights: z.record(z.string(), z.number()).optional(),
+  persist: z.boolean().optional()
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = schema.parse(await request.json());
-    const understandings = await Promise.all(body.comments.map((comment) => understandComment(comment)));
-    const competition = calculateCompetitionMetrics(body.competition ?? {});
-    const signals = calculateSignals({ comments: body.comments, understandings, competition });
-    const trend = calculateTrendSnapshot(
-      body.trend ?? {
-        currentMentions: body.comments.length,
-        previousMentions: Math.max(1, Math.floor(body.comments.length * 0.72))
-      }
-    );
-
-    signals.trendMomentum = trend.monthlyGrowth;
-    signals.trendVelocity = trend.monthlyGrowth;
-    signals.trendAcceleration = trend.acceleration;
-
-    const score = calculateOpportunityScore({
-      signals,
-      competition,
-      weights: { ...defaultScoringWeights, ...body.weights }
+    const analysis = await runOpportunityAnalysis({
+      topic: body.topic,
+      comments: body.comments,
+      modifiers: body.modifiers,
+      competition: body.competition,
+      trend: body.trend,
+      weights: body.weights as Record<string, number> | undefined
     });
-    const segments = Array.from(new Set(understandings.map((item) => item.audienceType)));
+
+    let opportunityId: string | undefined;
+    const shouldPersist = body.persist !== false;
+    const ownerId = getAppOwnerUserId();
+
+    if (
+      shouldPersist &&
+      ownerId &&
+      env.NEXT_PUBLIC_SUPABASE_URL &&
+      env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      const saved = await persistOpportunityAnalysis({ userId: ownerId, analysis });
+      opportunityId = saved.opportunityId;
+    }
 
     return NextResponse.json({
-      title: body.topic,
-      description: `Opportunity analysis for ${body.topic} based on ${body.comments.length} normalized audience comments.`,
-      signals,
-      competition,
-      trend,
-      scores: score,
-      audienceSegments: segments,
-      whiteSpace: discoverWhiteSpace(body.topic, body.modifiers ?? []),
-      recommendations: generateContentRecommendations(body.topic, segments)
+      title: analysis.title,
+      description: analysis.description,
+      signals: analysis.signals,
+      competition: analysis.competition,
+      trend: analysis.trend,
+      scores: analysis.scores,
+      audienceSegments: analysis.audienceSegments,
+      whiteSpace: analysis.whiteSpace,
+      recommendations: analysis.recommendations,
+      persisted: Boolean(opportunityId),
+      opportunityId
     });
   } catch (error) {
     return NextResponse.json(
