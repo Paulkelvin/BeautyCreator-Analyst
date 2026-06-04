@@ -184,24 +184,70 @@ export async function persistOpportunityAnalysis({
   return { opportunityId: String(opportunity.id) };
 }
 
+/** Stores source + comments + intelligence alongside a saved opportunity. */
+export async function persistAnalysisWithComments({
+  userId,
+  topic,
+  comments,
+  analysis
+}: {
+  userId: string;
+  topic: string;
+  comments: NormalizedComment[];
+  analysis: AnalysisResult;
+}) {
+  const platform = comments[0]?.platform ?? "youtube";
+  const contentUrl = comments[0]?.contentUrl ?? null;
+
+  const sourceId = await createSource({
+    userId,
+    platform,
+    sourceType: "upload",
+    name: `Analysis: ${topic}`,
+    url: contentUrl || undefined,
+    metadata: { analysisType: "manual" }
+  });
+
+  const inserted = await persistNormalizedComments({ userId, sourceId, comments });
+
+  await Promise.all(
+    inserted.map(async (row, index) => {
+      await persistCommentUnderstanding({
+        commentId: String(row.id),
+        understanding: analysis.understandings[index]
+      });
+    })
+  );
+
+  return persistOpportunityAnalysis({ userId, analysis });
+}
+
 export async function getDashboardData() {
   if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { ...sampleDashboardData, isDemoData: true };
+    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
   }
 
+  const ownerId = env.APP_OWNER_USER_ID;
   const supabase = createSupabaseAdminClient();
-  const { data: opportunities } = await supabase
-    .from("opportunities")
-    .select("*")
-    .order("opportunity_score", { ascending: false })
-    .limit(8);
+
+  let query = supabase.from("opportunities").select("*").order("opportunity_score", { ascending: false }).limit(8);
+
+  if (ownerId) {
+    query = query.eq("user_id", ownerId);
+  }
+
+  const { data: opportunities } = await query;
 
   if (!opportunities?.length) {
-    return { ...sampleDashboardData, isDemoData: true };
+    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
   }
+
+  const { buildDashboardInsights } = await import("@/lib/db/dashboard-insights");
+  const insights = await buildDashboardInsights(ownerId ?? undefined);
 
   return {
     isDemoData: false,
+    chartsFromLiveData: insights.chartsFromLiveData,
     opportunities: opportunities.map((item) => ({
       id: String(item.id),
       title: String(item.title),
@@ -219,9 +265,9 @@ export async function getDashboardData() {
       trendClassification: item.trend_classification,
       recommendedContentTypes: item.recommended_content_types ?? []
     })) as Opportunity[],
-    trendRadar: sampleDashboardData.trendRadar,
-    segments: sampleDashboardData.segments,
-    graph: sampleDashboardData.graph
+    trendRadar: insights.trendRadar,
+    segments: insights.segments,
+    graph: insights.graph
   };
 }
 

@@ -3,18 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const steps = [
   {
     step: "1",
-    title: "Set APP_OWNER_USER_ID in Vercel",
-    body: "Create a Supabase Auth user, copy UUID into Vercel env, redeploy. See docs/REAL_DATA.md."
+    title: "APP_OWNER_USER_ID in Vercel",
+    body: "You added this — redeploy if you have not since. Saves attach to your Supabase user."
   },
   {
     step: "2",
-    title: "Paste comments or upload Instagram export",
-    body: "Your analysis saves to Supabase and appears under Saved opportunities after refresh."
+    title: "Paste, Instagram file, or video URL",
+    body: "Analyze comments or upload/import. Saved opportunities appear after refresh."
   },
   {
     step: "3",
-    title: "YouTube/TikTok URLs (later)",
-    body: "Needs Inngest + a worker with scrape tools. Charts below may still show demo data until phase B."
+    title: "Record feedback",
+    body: "After you publish content, log traffic/leads on a saved opportunity."
   }
 ];
 

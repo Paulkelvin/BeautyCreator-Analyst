@@ -7,8 +7,9 @@
 | Paste comments → Analyze | Yes | Saves to Supabase when `APP_OWNER_USER_ID` is set |
 | Instagram CSV/XLSX/JSON upload | Yes | Processes inline on Vercel (no Inngest required) |
 | Dashboard opportunity cards | Yes | Shows **your** saved rows when DB has data |
-| Trend radar / segments / graph | Demo only | Still sample until aggregation is built |
-| YouTube/TikTok URL scrape | No on Vercel | Needs Inngest + shell tools on a worker |
+| Trend radar / segments / graph | From your DB when comments exist | Falls back to sample until you save analyses |
+| YouTube/TikTok URL scrape | Tries on server; usually fails on Vercel | Needs CLI tools or Inngest + worker |
+| Performance feedback form | Yes | On dashboard when you have saved opportunities |
 
 ---
 
@@ -54,22 +55,18 @@ The profile row is created automatically on first save (trigger + `ensureProfile
 
 ### Phase A — You (config, ~15 min)
 
-- [ ] Set `APP_OWNER_USER_ID` and redeploy
+- [x] Set `APP_OWNER_USER_ID` and redeploy
+- [ ] Run one paste-analysis → wait for auto-refresh → confirm **Saved opportunities**
 - [ ] Optional: `OPENAI_API_KEY` for better comment understanding
-- [ ] Run one paste-analysis and one Instagram upload to confirm dashboard updates
 
 ### Phase B — Engineering (next builds)
 
 | Item | Why |
 |------|-----|
-| **Login UI** (Supabase Auth) | Multi-user, secure ingest without owner UUID in env |
-| **YouTube/TikTok URL form** | UX for URL ingest |
-| **Inngest on Vercel** | Background jobs for URL scrape + large files |
-| **Worker with CLIs** | `youtube-comment-downloader`, `tiktok-scraper` (not on serverless) |
-| **Dashboard from DB** | Trend radar, segments, graph from stored `comment_intelligence` |
+| **Login UI** (Supabase Auth) | Multi-user; optional while `APP_OWNER_USER_ID` works |
+| **YouTube/TikTok on Vercel** | Worker with `youtube-comment-downloader` / `tiktok-scraper`, or Inngest |
 | **Topic graph builder** | Embeddings + `topics` / `topic_relationships` tables |
 | **Opportunity dedup** | Merge analyses for same topic |
-| **Feedback UI** | Wire `POST /api/feedback` to outcomes |
 
 ### Phase C — Nice to have
 

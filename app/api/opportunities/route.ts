@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAppOwnerUserId } from "@/lib/auth";
-import { persistOpportunityAnalysis } from "@/lib/db/repositories";
+import { persistAnalysisWithComments } from "@/lib/db/repositories";
 import { env } from "@/lib/env";
 import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
 import { normalizedCommentSchema } from "@/lib/ingestion/normalization";
@@ -47,7 +47,12 @@ export async function POST(request: NextRequest) {
       env.NEXT_PUBLIC_SUPABASE_URL &&
       env.SUPABASE_SERVICE_ROLE_KEY
     ) {
-      const saved = await persistOpportunityAnalysis({ userId: ownerId, analysis });
+      const saved = await persistAnalysisWithComments({
+        userId: ownerId,
+        topic: body.topic,
+        comments: body.comments,
+        analysis
+      });
       opportunityId = saved.opportunityId;
     }
 

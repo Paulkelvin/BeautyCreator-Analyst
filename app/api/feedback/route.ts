@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthenticatedUserId } from "@/lib/auth";
+import { resolveUserId } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const schema = z.object({
@@ -16,7 +16,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getAuthenticatedUserId(request);
+    const userId = await resolveUserId(request);
     const body = schema.parse(await request.json());
     const supabase = createSupabaseAdminClient();
     const { error } = await supabase.from("feedback_results").insert({

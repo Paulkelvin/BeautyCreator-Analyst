@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { Database, Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
 import { InstagramUpload } from "@/components/dashboard/instagram-upload";
+import { UrlIngest } from "@/components/dashboard/url-ingest";
+import { FeedbackForm } from "@/components/dashboard/feedback-form";
+import { ChartsNotice } from "@/components/dashboard/charts-notice";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { HowItWorks } from "@/components/dashboard/how-it-works";
 import { OpportunityCard } from "@/components/dashboard/opportunity-card";
@@ -44,6 +47,8 @@ export default async function DashboardPage() {
 
       <AnalyzeComments />
 
+      {!data.isDemoData ? <ChartsNotice fromLiveData={data.chartsFromLiveData ?? false} /> : null}
+
       <section className="space-y-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -60,6 +65,7 @@ export default async function DashboardPage() {
             <OpportunityCard key={opportunity.id} opportunity={opportunity} />
           ))}
         </div>
+        {!data.isDemoData ? <FeedbackForm opportunities={data.opportunities} /> : null}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -119,22 +125,10 @@ export default async function DashboardPage() {
             yet. Use &quot;Analyze your comments&quot; above for now.
           </p>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           <InstagramUpload />
-          <Card>
-            <CardHeader>
-              <Database className="h-7 w-7 text-violet-600" />
-              <CardTitle>YouTube / TikTok URLs</CardTitle>
-              <CardDescription>
-                Automatic comment extraction requires Inngest plus CLI tools on a worker (not available on
-                default Vercel). Use paste-comments above or Instagram upload for now.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs text-slate-600">
-              <code className="block rounded-lg bg-slate-950 px-3 py-2 text-white">POST /api/ingest/youtube</code>
-              <code className="block rounded-lg bg-slate-950 px-3 py-2 text-white">POST /api/ingest/tiktok</code>
-            </CardContent>
-          </Card>
+          <UrlIngest platform="youtube" />
+          <UrlIngest platform="tiktok" />
         </div>
       </section>
 
