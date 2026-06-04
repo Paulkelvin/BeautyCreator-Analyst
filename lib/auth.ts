@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import { readRuntimeEnv } from "@/lib/runtime-env";
 
 /**
  * Single-tenant mode: set APP_OWNER_USER_ID in Vercel to your Supabase Auth user UUID.
  * All saves and ingests attach to that user without login UI.
  */
 export function getAppOwnerUserId() {
-  return env.APP_OWNER_USER_ID ?? null;
+  return readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID ?? null;
 }
 
 export async function resolveUserId(request: NextRequest) {

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getAppOwnerUserId } from "@/lib/auth";
 import { persistAnalysisWithComments } from "@/lib/db/repositories";
-import { env } from "@/lib/env";
 import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
 import { normalizedCommentSchema } from "@/lib/ingestion/normalization";
+import { getPersistConfig } from "@/lib/runtime-env";
 
 export const runtime = "nodejs";
 
@@ -37,23 +36,27 @@ export async function POST(request: NextRequest) {
       weights: body.weights as Record<string, number> | undefined
     });
 
-    let opportunityId: string | undefined;
     const shouldPersist = body.persist !== false;
-    const ownerId = getAppOwnerUserId();
+    const persistConfig = getPersistConfig();
 
-    if (
-      shouldPersist &&
-      ownerId &&
-      env.NEXT_PUBLIC_SUPABASE_URL &&
-      env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      const saved = await persistAnalysisWithComments({
-        userId: ownerId,
-        topic: body.topic,
-        comments: body.comments,
-        analysis
-      });
-      opportunityId = saved.opportunityId;
+    let opportunityId: string | undefined;
+    let persistError: string | undefined;
+
+    if (shouldPersist && persistConfig.canPersist && persistConfig.appOwnerUserId) {
+      try {
+        const saved = await persistAnalysisWithComments({
+          userId: persistConfig.appOwnerUserId,
+          topic: body.topic,
+          comments: body.comments,
+          analysis
+        });
+        opportunityId = saved.opportunityId;
+      } catch (saveError) {
+        persistError =
+          saveError instanceof Error
+            ? saveError.message
+            : "Save failed. Check that your APP_OWNER_USER_ID matches a user in Supabase → Authentication → Users.";
+      }
     }
 
     return NextResponse.json({
@@ -67,7 +70,16 @@ export async function POST(request: NextRequest) {
       whiteSpace: analysis.whiteSpace,
       recommendations: analysis.recommendations,
       persisted: Boolean(opportunityId),
-      opportunityId
+      opportunityId,
+      persistError,
+      persistHint: opportunityId
+        ? null
+        : persistError ?? persistConfig.reason ?? "Save was skipped.",
+      saveConfig: {
+        appOwnerConfigured: Boolean(persistConfig.appOwnerUserId),
+        supabaseUrlConfigured: Boolean(persistConfig.supabaseUrl),
+        serviceRoleConfigured: Boolean(persistConfig.serviceRoleKey)
+      }
     });
   } catch (error) {
     return NextResponse.json(

@@ -31,7 +31,9 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | Already set |
 | `NEXT_PUBLIC_APP_URL` | `https://beauty-creator-analyst.vercel.app` |
 
-**Redeploy** after saving.
+**Redeploy** after saving (required — Vercel only injects new env vars on a new deployment).
+
+**Check save config:** open `https://beauty-creator-analyst.vercel.app/api/setup-status` — you should see `"canPersist": true` and `"appOwnerConfigured": true`.
 
 The profile row is created automatically on first save (trigger + `ensureProfile`).
 

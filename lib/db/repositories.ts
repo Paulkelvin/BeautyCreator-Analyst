@@ -1,5 +1,6 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
+import { readRuntimeEnv } from "@/lib/runtime-env";
 import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
 import { type CommentUnderstanding, type NormalizedComment, type Opportunity } from "@/lib/types";
 
@@ -223,11 +224,15 @@ export async function persistAnalysisWithComments({
 }
 
 export async function getDashboardData() {
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  const hasSupabase =
+    readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") &&
+    readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!hasSupabase) {
     return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
   }
 
-  const ownerId = env.APP_OWNER_USER_ID;
+  const ownerId = readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID;
   const supabase = createSupabaseAdminClient();
 
   let query = supabase.from("opportunities").select("*").order("opportunity_score", { ascending: false }).limit(8);

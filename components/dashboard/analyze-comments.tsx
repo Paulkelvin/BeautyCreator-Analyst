@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { AnalysisResult } from "@/components/dashboard/analysis-result";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,30 @@ export function AnalyzeComments() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/setup-status")
+      .then((res) => res.json())
+      .then(
+        (data: {
+          canPersist?: boolean;
+          hint?: string;
+          appOwnerConfigured?: boolean;
+        }) => {
+          if (data.canPersist) {
+            setSaveStatus("Server is configured to save analyses to your dashboard.");
+          } else if (data.hint) {
+            setSaveStatus(data.hint);
+          } else if (!data.appOwnerConfigured) {
+            setSaveStatus(
+              "Server cannot see APP_OWNER_USER_ID yet — add it in Vercel (Production) and redeploy."
+            );
+          }
+        }
+      )
+      .catch(() => undefined);
+  }, []);
 
   async function handleAnalyze(event: React.FormEvent) {
     event.preventDefault();
@@ -99,6 +123,13 @@ export function AnalyzeComments() {
         error?: string;
         persisted?: boolean;
         opportunityId?: string;
+        persistHint?: string | null;
+        persistError?: string;
+        saveConfig?: {
+          appOwnerConfigured?: boolean;
+          supabaseUrlConfigured?: boolean;
+          serviceRoleConfigured?: boolean;
+        };
       };
       if (!response.ok) {
         throw new Error(payload.error ?? "Analysis failed.");
@@ -111,8 +142,20 @@ export function AnalyzeComments() {
         );
         setTimeout(() => window.location.reload(), 2000);
       } else {
+        const parts = [
+          payload.persistError,
+          payload.persistHint,
+          payload.saveConfig && !payload.saveConfig.appOwnerConfigured
+            ? "APP_OWNER_USER_ID is not visible to the live server — set it for Production and redeploy (not only Preview)."
+            : null,
+          payload.saveConfig && !payload.saveConfig.serviceRoleConfigured
+            ? "SUPABASE_SERVICE_ROLE_KEY is missing on the server."
+            : null
+        ].filter(Boolean);
         setMessage(
-          "Analysis complete. To save to the dashboard, set APP_OWNER_USER_ID in Vercel (see docs/REAL_DATA.md)."
+          parts.length
+            ? `Analysis complete but not saved: ${parts.join(" ")}`
+            : "Analysis complete but not saved. Check Vercel env vars and redeploy."
         );
       }
       document.getElementById("analysis-result")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -134,6 +177,9 @@ export function AnalyzeComments() {
           <CardDescription>
             Paste audience comments from any video or post (one comment per line). The engine scores demand,
             gaps, commercial intent, and suggests content ideas. No URL scraping yet — you provide the text.
+            {saveStatus ? (
+              <span className="mt-2 block font-medium text-violet-800">{saveStatus}</span>
+            ) : null}
           </CardDescription>
         </CardHeader>
         <CardContent>
