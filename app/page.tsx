@@ -52,12 +52,12 @@ export default function HomePage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <Link href="/dashboard">
-                Explore opportunities <ArrowRight className="h-4 w-4" />
+              <Link href="/dashboard#analyze">
+                Analyze my comments <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button size="lg" variant="secondary" asChild>
-              <Link href="/api/opportunities">View API surface</Link>
+              <Link href="/dashboard">View demo dashboard</Link>
             </Button>
           </div>
         </div>

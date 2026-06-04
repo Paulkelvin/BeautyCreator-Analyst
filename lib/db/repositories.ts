@@ -113,7 +113,7 @@ export async function persistCommentUnderstanding(input: {
 
 export async function getDashboardData() {
   if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    return sampleDashboardData;
+    return { ...sampleDashboardData, isDemoData: true };
   }
 
   const supabase = createSupabaseAdminClient();
@@ -124,10 +124,11 @@ export async function getDashboardData() {
     .limit(8);
 
   if (!opportunities?.length) {
-    return sampleDashboardData;
+    return { ...sampleDashboardData, isDemoData: true };
   }
 
   return {
+    isDemoData: false,
     opportunities: opportunities.map((item) => ({
       id: String(item.id),
       title: String(item.title),

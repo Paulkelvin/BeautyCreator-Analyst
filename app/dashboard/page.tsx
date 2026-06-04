@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { Database, FileUp, Globe2, LineChart, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Database, FileUp, LineChart, Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
+import { DemoBanner } from "@/components/dashboard/demo-banner";
+import { HowItWorks } from "@/components/dashboard/how-it-works";
 import { OpportunityCard } from "@/components/dashboard/opportunity-card";
 import { TopicGraph } from "@/components/dashboard/topic-graph";
 import { TrendRadar } from "@/components/dashboard/trend-radar";
@@ -7,19 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/db/repositories";
-
-const modules = [
-  "Opportunity Discovery",
-  "Gap Analysis",
-  "Trend Radar",
-  "Audience Intelligence",
-  "Competitor Intelligence",
-  "Topic Graph Explorer",
-  "Content Cluster Builder",
-  "Geographic Insights",
-  "Strategic Fit Dashboard",
-  "Performance Feedback"
-];
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
@@ -42,23 +32,33 @@ export default async function DashboardPage() {
             <Link href="/">Home</Link>
           </Button>
           <Button asChild>
-            <Link href="#ingestion">Connect sources</Link>
+            <Link href="#analyze">Analyze my comments</Link>
           </Button>
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {modules.map((module) => (
-          <div key={module} className="rounded-2xl border bg-white/80 p-4 text-sm font-semibold text-slate-700">
-            {module}
-          </div>
-        ))}
-      </section>
+      <HowItWorks />
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        {data.opportunities.map((opportunity) => (
-          <OpportunityCard key={opportunity.id} opportunity={opportunity} />
-        ))}
+      {data.isDemoData ? <DemoBanner /> : null}
+
+      <AnalyzeComments />
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            {data.isDemoData ? "Example opportunities (demo)" : "Saved opportunities"}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {data.isDemoData
+              ? "Illustrative beauty-creator research until you save analyses to your database."
+              : "Loaded from your Supabase project."}
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {data.opportunities.map((opportunity) => (
+            <OpportunityCard key={opportunity.id} opportunity={opportunity} />
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -110,38 +110,47 @@ export default async function DashboardPage() {
         </Card>
       </section>
 
-      <section id="ingestion" className="grid gap-6 lg:grid-cols-3">
-        {[
-          {
-            title: "YouTube extraction",
-            description: "Queue automatic collection of titles, URLs, channel metadata, counts, comments, likes, dates, and replies.",
-            icon: Database,
-            endpoint: "POST /api/ingest/youtube"
-          },
-          {
-            title: "TikTok extraction",
-            description: "Queue open-source extraction for video metadata and audience comments with engagement metrics.",
-            icon: LineChart,
-            endpoint: "POST /api/ingest/tiktok"
-          },
-          {
-            title: "Instagram upload",
-            description: "Upload CSV, XLSX, or JSON exports and normalize them to the unified conversation schema.",
-            icon: FileUp,
-            endpoint: "POST /api/ingest/instagram-upload"
-          }
-        ].map((source) => (
-          <Card key={source.title}>
-            <CardHeader>
-              <source.icon className="h-7 w-7 text-violet-600" />
-              <CardTitle>{source.title}</CardTitle>
-              <CardDescription>{source.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <code className="rounded-lg bg-slate-950 px-3 py-2 text-xs text-white">{source.endpoint}</code>
-            </CardContent>
-          </Card>
-        ))}
+      <section id="ingestion" className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Automatic ingestion (advanced)</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            These APIs pull comments from URLs but require Inngest and authentication — not wired to buttons
+            yet. Use &quot;Analyze your comments&quot; above for now.
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {[
+            {
+              title: "YouTube extraction",
+              description: "Queue automatic collection of titles, URLs, channel metadata, counts, comments, likes, dates, and replies.",
+              icon: Database,
+              endpoint: "POST /api/ingest/youtube"
+            },
+            {
+              title: "TikTok extraction",
+              description: "Queue open-source extraction for video metadata and audience comments with engagement metrics.",
+              icon: LineChart,
+              endpoint: "POST /api/ingest/tiktok"
+            },
+            {
+              title: "Instagram upload",
+              description: "Upload CSV, XLSX, or JSON exports and normalize them to the unified conversation schema.",
+              icon: FileUp,
+              endpoint: "POST /api/ingest/instagram-upload"
+            }
+          ].map((source) => (
+            <Card key={source.title}>
+              <CardHeader>
+                <source.icon className="h-7 w-7 text-violet-600" />
+                <CardTitle>{source.title}</CardTitle>
+                <CardDescription>{source.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <code className="rounded-lg bg-slate-950 px-3 py-2 text-xs text-white">{source.endpoint}</code>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
