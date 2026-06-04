@@ -37,14 +37,17 @@ opportunities, competitors, trend snapshots, recommendations, scores, and feedba
 
 ## Getting started
 
+**First-time setup (Supabase project, MCP, Vercel):** see **[docs/SETUP.md](docs/SETUP.md)**.
+
 ```bash
 npm install
 cp .env.example .env.local
+# Edit .env.local with your Supabase keys (see docs/SETUP.md)
 npm run dev
 ```
 
-Apply the Supabase migration in `supabase/migrations/001_initial_schema.sql`, then configure the
-environment variables from `.env.example`.
+Apply migrations in `supabase/migrations/` (`001` then `002`) in the Supabase SQL Editor or via
+Supabase MCP in Cursor.
 
 For automatic extraction in production, install compatible CLI tools in the worker/runtime image and
 set:

@@ -2,6 +2,23 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { type CommentUnderstanding, type NormalizedComment, type Opportunity } from "@/lib/types";
 
+/** Ensures a profiles row exists (dev x-user-id or service-role ingest before Auth signup). */
+export async function ensureProfile(userId: string, email?: string | null) {
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from("profiles").upsert(
+    { id: userId, email: email ?? null },
+    { onConflict: "id" }
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function persistNormalizedComments({
   sourceId,
   userId,
@@ -45,6 +62,7 @@ export async function createSource(input: {
   url?: string;
   metadata?: Record<string, unknown>;
 }) {
+  await ensureProfile(input.userId);
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("sources")
