@@ -34,7 +34,7 @@ const aliases: Record<keyof NormalizedComment, string[]> = {
 
 export function normalizeRecord(record: Record<string, unknown>, fallbackPlatform?: Platform) {
   const normalized: Partial<NormalizedComment> = {
-    platform: fallbackPlatform ?? readValue(record, aliases.platform) ?? "instagram",
+    platform: normalizePlatform(readValue(record, aliases.platform), fallbackPlatform),
     creator: String(readValue(record, aliases.creator) ?? "Unknown creator"),
     contentTitle: String(readValue(record, aliases.contentTitle) ?? "Untitled content"),
     contentUrl: String(readValue(record, aliases.contentUrl) ?? ""),
@@ -49,6 +49,15 @@ export function normalizeRecord(record: Record<string, unknown>, fallbackPlatfor
   };
 
   return normalizedCommentSchema.parse(normalized);
+}
+
+function normalizePlatform(value: unknown, fallbackPlatform?: Platform): Platform {
+  if (fallbackPlatform) {
+    return fallbackPlatform;
+  }
+
+  const platform = String(value ?? "instagram").toLowerCase();
+  return platforms.includes(platform as Platform) ? (platform as Platform) : "instagram";
 }
 
 export function normalizeRecords(records: Record<string, unknown>[], fallbackPlatform?: Platform) {

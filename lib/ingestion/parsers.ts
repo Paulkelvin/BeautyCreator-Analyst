@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import readXlsxFile from "read-excel-file/node";
+import { readSheet, type Row } from "read-excel-file/node";
 
 export async function parseUploadedComments(file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -24,14 +24,14 @@ export async function parseUploadedComments(file: File) {
   }
 
   if (extension === "xlsx") {
-    const rows = await readXlsxFile(buffer);
+    const rows = await readSheet(buffer);
     const [headers, ...body] = rows;
     if (!headers) {
       return [];
     }
 
-    return body.map((row) =>
-      Object.fromEntries(headers.map((header, index) => [String(header), row[index] ?? ""]))
+    return body.map((row: Row) =>
+      Object.fromEntries(headers.map((header, index: number) => [String(header), row[index] ?? ""]))
     );
   }
 

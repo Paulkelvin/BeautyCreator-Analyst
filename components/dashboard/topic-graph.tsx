@@ -20,7 +20,7 @@ export function TopicGraph({ edges }: { edges: Edge[] }) {
               className="flex items-center justify-between rounded-2xl border bg-slate-50 px-4 py-3 text-sm"
             >
               <span className="font-medium text-slate-900">{edge.parent}</span>
-              <span className="text-slate-400">-></span>
+              <span className="text-slate-400">-&gt;</span>
               <span className="text-violet-700">{edge.child}</span>
             </div>
           ))}

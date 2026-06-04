@@ -7,32 +7,53 @@ import { type NormalizedComment } from "@/lib/types";
 
 export const inngest = new Inngest({ id: "content-intelligence-engine" });
 
+type UploadedCommentsEvent = {
+  userId: string;
+  platform: "instagram";
+  name: string;
+  fileName: string;
+  storagePath?: string | null;
+  comments: NormalizedComment[];
+};
+
+type ExternalSourceEvent = {
+  userId: string;
+  platform: "youtube" | "tiktok";
+  url: string;
+  limit?: number;
+  name?: string;
+};
+
+type PersistedCommentRow = {
+  id: string;
+};
+
 export const ingestUploadedComments = inngest.createFunction(
-  { id: "ingest-uploaded-comments" },
-  { event: "comments/uploaded" },
+  { id: "ingest-uploaded-comments", triggers: { event: "comments/uploaded" } },
   async ({ event, step }) => {
+    const data = event.data as UploadedCommentsEvent;
     const sourceId = await step.run("create upload source", () =>
       createSource({
-        userId: event.data.userId,
-        platform: event.data.platform,
+        userId: data.userId,
+        platform: data.platform,
         sourceType: "upload",
-        name: event.data.name,
-        metadata: { fileName: event.data.fileName, storagePath: event.data.storagePath ?? null }
+        name: data.name,
+        metadata: { fileName: data.fileName, storagePath: data.storagePath ?? null }
       })
     );
 
     const inserted = await step.run("persist normalized comments", () =>
       persistNormalizedComments({
-        userId: event.data.userId,
+        userId: data.userId,
         sourceId,
-        comments: event.data.comments as NormalizedComment[]
+        comments: data.comments
       })
     );
 
     await step.run("understand comments", async () => {
       await Promise.all(
-        inserted.map(async (row, index) => {
-          const understanding = await understandComment((event.data.comments as NormalizedComment[])[index]);
+        (inserted as PersistedCommentRow[]).map(async (row, index) => {
+          const understanding = await understandComment(data.comments[index]);
           await persistCommentUnderstanding({ commentId: row.id, understanding });
         })
       );
@@ -43,29 +64,29 @@ export const ingestUploadedComments = inngest.createFunction(
 );
 
 export const ingestExternalSource = inngest.createFunction(
-  { id: "ingest-external-source" },
-  { event: "source/extract.requested" },
+  { id: "ingest-external-source", triggers: { event: "source/extract.requested" } },
   async ({ event, step }) => {
+    const data = event.data as ExternalSourceEvent;
     const comments = await step.run("extract comments", async () => {
-      if (event.data.platform === "youtube") {
-        return extractYouTubeComments({ url: event.data.url, limit: event.data.limit });
+      if (data.platform === "youtube") {
+        return extractYouTubeComments({ url: data.url, limit: data.limit });
       }
 
-      return extractTikTokComments({ url: event.data.url, limit: event.data.limit });
+      return extractTikTokComments({ url: data.url, limit: data.limit });
     });
 
     const sourceId = await step.run("create external source", () =>
       createSource({
-        userId: event.data.userId,
-        platform: event.data.platform,
+        userId: data.userId,
+        platform: data.platform,
         sourceType: "automatic",
-        name: event.data.name ?? event.data.url,
-        url: event.data.url
+        name: data.name ?? data.url,
+        url: data.url
       })
     );
 
     const inserted = await step.run("persist comments", () =>
-      persistNormalizedComments({ userId: event.data.userId, sourceId, comments })
+      persistNormalizedComments({ userId: data.userId, sourceId, comments })
     );
 
     return { sourceId, comments: inserted.length };
