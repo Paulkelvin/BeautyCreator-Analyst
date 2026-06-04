@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
 import { InstagramUpload } from "@/components/dashboard/instagram-upload";
 import { UrlIngest } from "@/components/dashboard/url-ingest";
@@ -9,6 +9,8 @@ import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { HowItWorks } from "@/components/dashboard/how-it-works";
 import { PostSaveNotice } from "@/components/dashboard/post-save-notice";
 import { SavedOpportunitiesSection } from "@/components/dashboard/saved-opportunities-section";
+import { GapIntelligence } from "@/components/dashboard/gap-intelligence";
+import { GeographicInsights } from "@/components/dashboard/geographic-insights";
 import { TopicGraph } from "@/components/dashboard/topic-graph";
 import { TrendRadar } from "@/components/dashboard/trend-radar";
 import { Badge } from "@/components/ui/badge";
@@ -101,30 +103,7 @@ export default async function DashboardPage() {
 
       <section className="grid gap-6 lg:grid-cols-2">
         <TopicGraph edges={data.graph} />
-        <Card>
-          <CardHeader>
-            <CardTitle>Gap and Competitor Intelligence</CardTitle>
-            <CardDescription>
-              Saturation is modeled through quality, depth, freshness, authority, and density.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {[
-              ["Content quality deficit", "High", "Existing articles are broad and lack regional testing."],
-              ["White space score", "91", "Niche combinations are visible but underserved."],
-              ["Difficulty score", "38", "Competition exists, but authoritative content is thin."],
-              ["Commercial intent", "84", "Comments include purchase questions, objections, and comparison language."]
-            ].map(([label, value, description]) => (
-              <div key={label} className="rounded-2xl border bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold">{label}</p>
-                  <Badge variant="success">{value}</Badge>
-                </div>
-                <p className="mt-2 text-sm text-slate-600">{description}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <GapIntelligence metrics={data.gapMetrics ?? []} isDemoData={data.isDemoData} />
       </section>
 
       <section id="ingestion" className="space-y-4">
@@ -140,15 +119,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <Globe2 className="h-7 w-7 text-violet-600" />
-            <CardTitle>Geographic Insights</CardTitle>
-            <CardDescription>
-              Detects region-specific demand across Nigeria, Ghana, Kenya, South Africa, and UK-based African audiences.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <GeographicInsights regions={data.geoRegions ?? []} isDemoData={data.isDemoData} />
         <Card>
           <CardHeader>
             <SlidersHorizontal className="h-7 w-7 text-violet-600" />

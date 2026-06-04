@@ -1,10 +1,9 @@
 import { understandComment } from "@/lib/ai/comment-understanding";
-import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
+import { analyzeAndPersist } from "@/lib/topics/persist-analysis";
 import {
   createSource,
   persistCommentUnderstanding,
-  persistNormalizedComments,
-  persistOpportunityAnalysis
+  persistNormalizedComments
 } from "@/lib/db/repositories";
 import { type NormalizedComment } from "@/lib/types";
 
@@ -25,6 +24,28 @@ export async function processCommentBatch({
   metadata?: Record<string, unknown>;
   persistOpportunity?: boolean;
 }) {
+  if (persistOpportunity && comments.length > 0) {
+    const saved = await analyzeAndPersist({
+      userId,
+      topic,
+      comments,
+      source: {
+        platform,
+        name,
+        sourceType: metadata.sourceType === "automatic" ? "automatic" : "upload",
+        metadata
+      }
+    });
+
+    return {
+      sourceId: saved.sourceId,
+      commentsStored: comments.length,
+      opportunityId: saved.opportunityId,
+      topicId: saved.canonicalTopic.id,
+      deduplicated: saved.deduplicated
+    };
+  }
+
   const sourceId = await createSource({
     userId,
     platform,
@@ -45,16 +66,9 @@ export async function processCommentBatch({
     })
   );
 
-  let opportunityId: string | undefined;
-  if (persistOpportunity && comments.length > 0) {
-    const analysis = await runOpportunityAnalysis({ topic, comments });
-    const saved = await persistOpportunityAnalysis({ userId, analysis });
-    opportunityId = saved.opportunityId;
-  }
-
   return {
     sourceId,
     commentsStored: inserted.length,
-    opportunityId
+    opportunityId: undefined
   };
 }

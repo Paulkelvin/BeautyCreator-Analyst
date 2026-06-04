@@ -8,7 +8,7 @@ type AnalysisResult = Awaited<ReturnType<typeof runOpportunityAnalysis>>;
 
 /** Ensures a profiles row exists (dev x-user-id or service-role ingest before Auth signup). */
 export async function ensureProfile(userId: string, email?: string | null) {
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") || !readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY")) {
     return;
   }
 
@@ -115,57 +115,106 @@ export async function persistCommentUnderstanding(input: {
   }
 }
 
-export async function persistOpportunityAnalysis({
-  userId,
-  analysis
-}: {
-  userId: string;
-  analysis: AnalysisResult;
-}) {
-  await ensureProfile(userId);
-  const supabase = createSupabaseAdminClient();
-
+function opportunityPayload(userId: string, topicId: string, analysis: AnalysisResult) {
   const recommendedTypes = [
     ...analysis.recommendations.videoIdeas.slice(0, 2),
     ...analysis.recommendations.blogTopics.slice(0, 1),
     ...analysis.recommendations.shortFormContent.slice(0, 1)
   ];
 
-  const { data: opportunity, error } = await supabase
-    .from("opportunities")
-    .insert({
-      user_id: userId,
-      title: analysis.title,
-      description: analysis.description,
-      demand_score: analysis.scores.demandScore,
-      gap_score: analysis.scores.gapScore,
-      commercial_score: analysis.scores.commercialScore,
-      momentum_score: analysis.scores.momentumScore,
-      strategic_fit_score: analysis.scores.strategicFitScore,
-      actionability_score: analysis.scores.actionabilityScore,
-      difficulty_score: analysis.scores.difficultyScore,
-      competition_score: analysis.scores.competitionScore,
-      confidence_score: analysis.scores.confidenceScore,
-      opportunity_score: analysis.scores.opportunityScore,
-      audience_segments: analysis.audienceSegments,
-      trend_classification: analysis.trend.classification,
-      recommended_content_types: recommendedTypes,
-      reasoning: {
-        signals: analysis.signals,
-        competition: analysis.competition,
-        whiteSpace: analysis.whiteSpace
+  return {
+    user_id: userId,
+    topic_id: topicId,
+    title: analysis.title,
+    description: analysis.description,
+    demand_score: analysis.scores.demandScore,
+    gap_score: analysis.scores.gapScore,
+    commercial_score: analysis.scores.commercialScore,
+    momentum_score: analysis.scores.momentumScore,
+    strategic_fit_score: analysis.scores.strategicFitScore,
+    actionability_score: analysis.scores.actionabilityScore,
+    difficulty_score: analysis.scores.difficultyScore,
+    competition_score: analysis.scores.competitionScore,
+    confidence_score: analysis.scores.confidenceScore,
+    opportunity_score: analysis.scores.opportunityScore,
+    audience_segments: analysis.audienceSegments,
+    trend_classification: analysis.trend.classification,
+    recommended_content_types: recommendedTypes,
+    reasoning: {
+      signals: analysis.signals,
+      competition: analysis.competition,
+      whiteSpace: analysis.whiteSpace,
+      gapBreakdown: {
+        gapScore: analysis.scores.gapScore,
+        contentQualityDeficit: analysis.competition.contentQualityDeficitScore,
+        whiteSpaceScore: analysis.competition.whiteSpaceScore,
+        difficultyScore: analysis.scores.difficultyScore,
+        commercialScore: analysis.scores.commercialScore
       }
-    })
-    .select("id")
-    .single();
+    },
+    updated_at: new Date().toISOString()
+  };
+}
 
-  if (error) {
-    throw error;
+export async function persistOpportunityAnalysis({
+  userId,
+  topicId,
+  analysis
+}: {
+  userId: string;
+  topicId: string;
+  analysis: AnalysisResult;
+}) {
+  await ensureProfile(userId);
+  const supabase = createSupabaseAdminClient();
+  const payload = opportunityPayload(userId, topicId, analysis);
+
+  const { data: existingRows } = await supabase
+    .from("opportunities")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("topic_id", topicId)
+    .order("opportunity_score", { ascending: false })
+    .limit(1);
+
+  const existing = existingRows?.[0];
+
+  let opportunityId: string;
+  let deduplicated = false;
+
+  if (existing?.id) {
+    const { data: updated, error } = await supabase
+      .from("opportunities")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    opportunityId = String(updated.id);
+    deduplicated = true;
+
+    await supabase.from("content_recommendations").delete().eq("opportunity_id", opportunityId);
+  } else {
+    const { data: opportunity, error } = await supabase
+      .from("opportunities")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    opportunityId = String(opportunity.id);
   }
 
   const { error: recError } = await supabase.from("content_recommendations").insert({
     user_id: userId,
-    opportunity_id: opportunity.id,
+    opportunity_id: opportunityId,
     blog_topics: analysis.recommendations.blogTopics,
     seo_clusters: analysis.recommendations.seoClusters,
     video_ideas: analysis.recommendations.videoIdeas,
@@ -182,10 +231,10 @@ export async function persistOpportunityAnalysis({
     throw recError;
   }
 
-  return { opportunityId: String(opportunity.id) };
+  return { opportunityId, deduplicated };
 }
 
-/** Stores source + comments + intelligence alongside a saved opportunity. */
+/** @deprecated Use analyzeAndPersist from lib/topics/persist-analysis.ts */
 export async function persistAnalysisWithComments({
   userId,
   topic,
@@ -197,30 +246,16 @@ export async function persistAnalysisWithComments({
   comments: NormalizedComment[];
   analysis: AnalysisResult;
 }) {
-  const platform = comments[0]?.platform ?? "youtube";
-  const contentUrl = comments[0]?.contentUrl ?? null;
-
-  const sourceId = await createSource({
+  const { resolveOrCreateTopic } = await import("@/lib/topics/registry");
+  const { persistAnalysisWithTopics } = await import("@/lib/topics/persist-analysis");
+  const canonicalTopic = await resolveOrCreateTopic(userId, topic);
+  return persistAnalysisWithTopics({
     userId,
-    platform,
-    sourceType: "upload",
-    name: `Analysis: ${topic}`,
-    url: contentUrl || undefined,
-    metadata: { analysisType: "manual" }
+    topicId: canonicalTopic.id,
+    topicLabel: canonicalTopic.label,
+    comments,
+    analysis
   });
-
-  const inserted = await persistNormalizedComments({ userId, sourceId, comments });
-
-  await Promise.all(
-    inserted.map(async (row, index) => {
-      await persistCommentUnderstanding({
-        commentId: String(row.id),
-        understanding: analysis.understandings[index]
-      });
-    })
-  );
-
-  return persistOpportunityAnalysis({ userId, analysis });
 }
 
 export async function getDashboardData() {
@@ -229,7 +264,13 @@ export async function getDashboardData() {
     readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!hasSupabase) {
-    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
+    return {
+      ...sampleDashboardData,
+      isDemoData: true,
+      chartsFromLiveData: false,
+      gapMetrics: [],
+      geoRegions: []
+    };
   }
 
   const ownerId = readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID;
@@ -244,7 +285,13 @@ export async function getDashboardData() {
   const { data: opportunities } = await query;
 
   if (!opportunities?.length) {
-    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
+    return {
+      ...sampleDashboardData,
+      isDemoData: true,
+      chartsFromLiveData: false,
+      gapMetrics: [],
+      geoRegions: []
+    };
   }
 
   const { buildDashboardInsights } = await import("@/lib/db/dashboard-insights");
@@ -253,6 +300,8 @@ export async function getDashboardData() {
   return {
     isDemoData: false,
     chartsFromLiveData: insights.chartsFromLiveData,
+    gapMetrics: insights.gapMetrics,
+    geoRegions: insights.geoRegions,
     opportunities: opportunities.map((item) => ({
       id: String(item.id),
       title: String(item.title),
