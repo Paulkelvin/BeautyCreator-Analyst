@@ -8,7 +8,7 @@ type AnalysisResult = Awaited<ReturnType<typeof runOpportunityAnalysis>>;
 
 /** Ensures a profiles row exists (dev x-user-id or service-role ingest before Auth signup). */
 export async function ensureProfile(userId: string, email?: string | null) {
-  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") || !readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY")) {
     return;
   }
 
@@ -223,16 +223,55 @@ export async function persistAnalysisWithComments({
   return persistOpportunityAnalysis({ userId, analysis });
 }
 
+function mapOpportunityRow(item: Record<string, unknown>): Opportunity {
+  return {
+    id: String(item.id),
+    title: String(item.title),
+    description: String(item.description),
+    demandScore: Number(item.demand_score),
+    gapScore: Number(item.gap_score),
+    commercialScore: Number(item.commercial_score),
+    momentumScore: Number(item.momentum_score),
+    strategicFitScore: Number(item.strategic_fit_score),
+    actionabilityScore: Number(item.actionability_score),
+    difficultyScore: Number(item.difficulty_score),
+    competitionScore: Number(item.competition_score),
+    confidenceScore: Number(item.confidence_score),
+    audienceSegments: (item.audience_segments ?? []) as Opportunity["audienceSegments"],
+    trendClassification: String(item.trend_classification) as Opportunity["trendClassification"],
+    recommendedContentTypes: (item.recommended_content_types ?? []) as string[]
+  };
+}
+
+/** Count saved opportunities for the configured owner (setup diagnostics). */
+export async function countSavedOpportunities() {
+  const hasSupabase =
+    readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") && readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!hasSupabase) {
+    return { count: 0, configured: false };
+  }
+
+  const ownerId = readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID;
+  const supabase = createSupabaseAdminClient();
+  let query = supabase.from("opportunities").select("id", { count: "exact", head: true });
+  if (ownerId) {
+    query = query.eq("user_id", ownerId);
+  }
+
+  const { count, error } = await query;
+  return { count: error ? 0 : (count ?? 0), configured: true, error: error?.message };
+}
+
 export async function getDashboardData() {
   const hasSupabase =
     readRuntimeEnv("NEXT_PUBLIC_SUPABASE_URL") &&
     readRuntimeEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const ownerId = readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID;
 
   if (!hasSupabase) {
-    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
+    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false, dataLoadError: null };
   }
 
-  const ownerId = readRuntimeEnv("APP_OWNER_USER_ID") ?? env.APP_OWNER_USER_ID;
   const supabase = createSupabaseAdminClient();
 
   let query = supabase.from("opportunities").select("*").order("opportunity_score", { ascending: false }).limit(8);
@@ -241,10 +280,39 @@ export async function getDashboardData() {
     query = query.eq("user_id", ownerId);
   }
 
-  const { data: opportunities } = await query;
+  const { data: opportunities, error } = await query;
+
+  if (error) {
+    const { buildDashboardInsights } = await import("@/lib/db/dashboard-insights");
+    const insights = await buildDashboardInsights(ownerId ?? undefined);
+    return {
+      isDemoData: false,
+      chartsFromLiveData: false,
+      dataLoadError: error.message,
+      opportunities: [] as Opportunity[],
+      trendRadar: insights.trendRadar.length ? insights.trendRadar : sampleDashboardData.trendRadar,
+      segments: insights.segments.length ? insights.segments : sampleDashboardData.segments,
+      graph: insights.graph.length ? insights.graph : sampleDashboardData.graph
+    };
+  }
 
   if (!opportunities?.length) {
-    return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false };
+    const showDemoCharts = !ownerId;
+    if (showDemoCharts) {
+      return { ...sampleDashboardData, isDemoData: true, chartsFromLiveData: false, dataLoadError: null };
+    }
+
+    const { buildDashboardInsights } = await import("@/lib/db/dashboard-insights");
+    const insights = await buildDashboardInsights(ownerId);
+    return {
+      isDemoData: false,
+      chartsFromLiveData: insights.chartsFromLiveData,
+      dataLoadError: null,
+      opportunities: [] as Opportunity[],
+      trendRadar: insights.trendRadar,
+      segments: insights.segments,
+      graph: insights.graph
+    };
   }
 
   const { buildDashboardInsights } = await import("@/lib/db/dashboard-insights");
@@ -253,23 +321,8 @@ export async function getDashboardData() {
   return {
     isDemoData: false,
     chartsFromLiveData: insights.chartsFromLiveData,
-    opportunities: opportunities.map((item) => ({
-      id: String(item.id),
-      title: String(item.title),
-      description: String(item.description),
-      demandScore: Number(item.demand_score),
-      gapScore: Number(item.gap_score),
-      commercialScore: Number(item.commercial_score),
-      momentumScore: Number(item.momentum_score),
-      strategicFitScore: Number(item.strategic_fit_score),
-      actionabilityScore: Number(item.actionability_score),
-      difficultyScore: Number(item.difficulty_score),
-      competitionScore: Number(item.competition_score),
-      confidenceScore: Number(item.confidence_score),
-      audienceSegments: item.audience_segments ?? [],
-      trendClassification: item.trend_classification,
-      recommendedContentTypes: item.recommended_content_types ?? []
-    })) as Opportunity[],
+    dataLoadError: null,
+    opportunities: opportunities.map((item) => mapOpportunityRow(item as Record<string, unknown>)),
     trendRadar: insights.trendRadar,
     segments: insights.segments,
     graph: insights.graph

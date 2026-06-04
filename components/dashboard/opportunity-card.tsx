@@ -3,9 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScorePill } from "@/components/dashboard/score-pill";
 import { type Opportunity } from "@/lib/types";
 
-export function OpportunityCard({ opportunity }: { opportunity: Opportunity }) {
+export function OpportunityCard({
+  opportunity,
+  highlighted = false
+}: {
+  opportunity: Opportunity;
+  highlighted?: boolean;
+}) {
   return (
-    <Card className="h-full">
+    <Card
+      className={`h-full ${highlighted ? "ring-2 ring-violet-500 ring-offset-2" : ""}`}
+      id={highlighted ? "latest-save" : undefined}
+    >
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>

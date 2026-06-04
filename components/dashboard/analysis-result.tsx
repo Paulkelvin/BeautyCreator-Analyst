@@ -1,10 +1,14 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScorePill } from "@/components/dashboard/score-pill";
 
 type AnalysisResponse = {
   title: string;
   description: string;
+  persisted?: boolean;
+  opportunityId?: string;
   scores: {
     demandScore: number;
     gapScore: number;
@@ -36,9 +40,33 @@ export function AnalysisResult({ result }: { result: AnalysisResponse }) {
   return (
     <Card className="border-emerald-200 bg-emerald-50/40">
       <CardHeader>
-        <Badge variant="success">Your analysis</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="success">Your analysis (this run)</Badge>
+          {result.persisted ? <Badge variant="default">Saved to database</Badge> : null}
+        </div>
         <CardTitle className="mt-2">{result.title}</CardTitle>
-        <CardDescription>{result.description}</CardDescription>
+        <CardDescription>
+          {result.description}
+          {result.persisted ? (
+            <span className="mt-2 block text-slate-700">
+              This preview disappears on refresh. Your permanent copy is under{" "}
+              <strong>Your saved opportunities</strong> at the top of the dashboard.
+            </span>
+          ) : null}
+        </CardDescription>
+        {result.persisted ? (
+          <Button size="sm" className="mt-3" asChild>
+            <Link
+              href={
+                result.opportunityId
+                  ? `/dashboard?saved=1&highlight=${result.opportunityId}#saved-opportunities`
+                  : "/dashboard#saved-opportunities"
+              }
+            >
+              View in My saves
+            </Link>
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="rounded-2xl bg-white p-4">

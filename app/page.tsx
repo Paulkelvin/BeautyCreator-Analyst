@@ -29,14 +29,7 @@ const pillars = [
 export default function HomePage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-10">
-      <nav className="flex items-center justify-between">
-        <div className="text-lg font-bold">Content Intelligence Engine</div>
-        <Button asChild variant="outline">
-          <Link href="/dashboard">Open dashboard</Link>
-        </Button>
-      </nav>
-
-      <section className="grid flex-1 items-center gap-10 py-20 lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="grid flex-1 items-center gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
           <div className="inline-flex rounded-full bg-violet-100 px-4 py-2 text-sm font-semibold text-violet-700">
             Market intelligence from real audience conversations
@@ -57,7 +50,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button size="lg" variant="secondary" asChild>
-              <Link href="/dashboard">View demo dashboard</Link>
+              <Link href="/dashboard#saved-opportunities">My saved opportunities</Link>
             </Button>
           </div>
         </div>
