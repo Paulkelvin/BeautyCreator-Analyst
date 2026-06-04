@@ -104,10 +104,12 @@ Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard).
 
 ## Part D — Deploy on Vercel **(you)**
 
+**Supabase for this app is already provisioned.** See **[docs/SUPABASE_PROJECT.md](SUPABASE_PROJECT.md)** for project ref, API URL, and anon key.
+
 ### 1. Connect GitHub
 
-1. [https://vercel.com/new](https://vercel.com/new) → import `paulkelvin/beautycreator-analyst` (or your fork).
-2. Use branch **`cursor/supabase-vercel-setup-ee70`** (or `main` after you merge the PR).
+1. [https://vercel.com/new](https://vercel.com/new) → import **Paulkelvin/BeautyCreator-Analyst**.
+2. Use branch **`main`** (app + migrations doc are on `main`).
 3. Framework preset: **Next.js** (auto-detected).
 
 ### 2. Environment variables
