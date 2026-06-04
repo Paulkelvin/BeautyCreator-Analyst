@@ -7,7 +7,7 @@ import { processCommentBatch } from "@/lib/ingestion/process-upload";
 import { inngest } from "@/lib/jobs/inngest";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const schema = z.object({
   url: z.string().url(),
@@ -69,9 +69,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to process YouTube URL.";
-    const hint =
-      message.includes("ENOENT") || message.includes("not found")
-        ? " Comment downloader CLI is not installed on this server. Paste comments manually or use a worker with youtube-comment-downloader."
+    const hint = message.includes("ENOENT") || message.includes("not found")
+      ? " Set YOUTUBE_API_KEY in Vercel (YouTube Data API v3) — see docs/URL_INGEST.md — or install youtube-comment-downloader on the server."
+      : message.includes("YOUTUBE_API_KEY")
+        ? " Add YOUTUBE_API_KEY in Vercel → Production and redeploy."
         : "";
 
     return NextResponse.json({ error: message + hint }, { status: 400 });

@@ -1,6 +1,10 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { env } from "@/lib/env";
+import {
+  extractYouTubeCommentsViaApi,
+  isYouTubeApiConfigured
+} from "@/lib/ingestion/youtube-api";
 import { normalizeRecords } from "@/lib/ingestion/normalization";
 import { type NormalizedComment } from "@/lib/types";
 import { safeNumber } from "@/lib/utils";
@@ -13,6 +17,10 @@ export type YouTubeExtractionInput = {
 };
 
 export async function extractYouTubeComments(input: YouTubeExtractionInput): Promise<NormalizedComment[]> {
+  if (isYouTubeApiConfigured()) {
+    return extractYouTubeCommentsViaApi(input);
+  }
+
   const limit = input.limit ?? 500;
   const { stdout } = await execFileAsync(
     env.YOUTUBE_COMMENT_DOWNLOADER_COMMAND,

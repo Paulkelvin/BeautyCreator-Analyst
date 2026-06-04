@@ -32,43 +32,47 @@ export async function understandComment(comment: NormalizedComment): Promise<Com
     return heuristicUnderstanding(comment);
   }
 
-  const response = await client.chat.completions.create({
-    model: env.OPENAI_ANALYSIS_MODEL,
-    temperature: 0.1,
-    response_format: { type: "json_object" },
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a market intelligence analyst. Extract strategic content signals from audience comments. Return only valid JSON matching the requested schema."
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          schema: {
-            intent: intentCategories,
-            sentiment: ["negative", "neutral", "positive"],
-            topic: "short human readable topic",
-            canonicalTopic: "snake_case canonical topic",
-            audienceType: audienceSegments,
-            buyingStage: buyingStages,
-            region: "country/region or null",
-            desiredOutcome: "desired result or null",
-            objection: "purchase/content objection or null",
-            emotionalIntensity: "0-100",
-            commercialIntent: "0-100",
-            actionability: "0-100",
-            insightDepth: "0-100"
-          },
-          comment
-        })
-      }
-    ]
-  });
+  try {
+    const response = await client.chat.completions.create({
+      model: env.OPENAI_ANALYSIS_MODEL,
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a market intelligence analyst. Extract strategic content signals from audience comments. Return only valid JSON matching the requested schema."
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            schema: {
+              intent: intentCategories,
+              sentiment: ["negative", "neutral", "positive"],
+              topic: "short human readable topic",
+              canonicalTopic: "snake_case canonical topic",
+              audienceType: audienceSegments,
+              buyingStage: buyingStages,
+              region: "country/region or null",
+              desiredOutcome: "desired result or null",
+              objection: "purchase/content objection or null",
+              emotionalIntensity: "0-100",
+              commercialIntent: "0-100",
+              actionability: "0-100",
+              insightDepth: "0-100"
+            },
+            comment
+          })
+        }
+      ]
+    });
 
-  const content = response.choices[0]?.message.content ?? "{}";
-  const parsed = understandingSchema.safeParse(JSON.parse(content));
-  return parsed.success ? parsed.data : heuristicUnderstanding(comment);
+    const content = response.choices[0]?.message.content ?? "{}";
+    const parsed = understandingSchema.safeParse(JSON.parse(content));
+    return parsed.success ? parsed.data : heuristicUnderstanding(comment);
+  } catch {
+    return heuristicUnderstanding(comment);
+  }
 }
 
 export function heuristicUnderstanding(comment: NormalizedComment): CommentUnderstanding {

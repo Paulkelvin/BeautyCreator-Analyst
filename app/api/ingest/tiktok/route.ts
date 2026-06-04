@@ -7,7 +7,7 @@ import { processCommentBatch } from "@/lib/ingestion/process-upload";
 import { inngest } from "@/lib/jobs/inngest";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const schema = z.object({
   url: z.string().url(),

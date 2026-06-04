@@ -1,14 +1,25 @@
 import OpenAI from "openai";
 import { env } from "@/lib/env";
+import { readRuntimeEnv } from "@/lib/runtime-env";
 
 let openai: OpenAI | null = null;
+let cachedKey: string | undefined;
+
+export function isOpenAIConfigured() {
+  return Boolean(readRuntimeEnv("OPENAI_API_KEY") ?? env.OPENAI_API_KEY);
+}
 
 export function getOpenAIClient() {
-  if (!env.OPENAI_API_KEY) {
+  const apiKey = readRuntimeEnv("OPENAI_API_KEY") ?? env.OPENAI_API_KEY;
+  if (!apiKey) {
     return null;
   }
 
-  openai ??= new OpenAI({ apiKey: env.OPENAI_API_KEY });
+  if (!openai || cachedKey !== apiKey) {
+    openai = new OpenAI({ apiKey });
+    cachedKey = apiKey;
+  }
+
   return openai;
 }
 
