@@ -1,13 +1,14 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
 import { InstagramUpload } from "@/components/dashboard/instagram-upload";
 import { UrlIngest } from "@/components/dashboard/url-ingest";
-import { FeedbackForm } from "@/components/dashboard/feedback-form";
 import { ChartsNotice } from "@/components/dashboard/charts-notice";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { HowItWorks } from "@/components/dashboard/how-it-works";
-import { OpportunityCard } from "@/components/dashboard/opportunity-card";
+import { PostSaveNotice } from "@/components/dashboard/post-save-notice";
+import { SavedOpportunitiesSection } from "@/components/dashboard/saved-opportunities-section";
 import { TopicGraph } from "@/components/dashboard/topic-graph";
 import { TrendRadar } from "@/components/dashboard/trend-radar";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +16,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardData } from "@/lib/db/repositories";
 
+/** Always load fresh opportunities from Supabase (never static demo HTML). */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage() {
   const data = await getDashboardData();
+
+  const savedSection = (
+    <SavedOpportunitiesSection opportunities={data.opportunities} isDemoData={data.isDemoData} />
+  );
+
+  const analyzeSection = (
+    <>
+      {data.isDemoData ? <DemoBanner /> : null}
+      <AnalyzeComments />
+      {!data.isDemoData ? <ChartsNotice fromLiveData={data.chartsFromLiveData ?? false} /> : null}
+    </>
+  );
 
   return (
     <main className="mx-auto max-w-7xl space-y-8 px-6 py-8">
@@ -36,37 +53,30 @@ export default async function DashboardPage() {
             <Link href="/">Home</Link>
           </Button>
           <Button asChild>
-            <Link href="#analyze">Analyze my comments</Link>
+            <Link href={data.isDemoData ? "#analyze" : "#saved-opportunities"}>
+              {data.isDemoData ? "Analyze my comments" : "View my opportunities"}
+            </Link>
           </Button>
         </div>
       </header>
 
+      <Suspense fallback={null}>
+        <PostSaveNotice />
+      </Suspense>
+
       <HowItWorks />
 
-      {data.isDemoData ? <DemoBanner /> : null}
-
-      <AnalyzeComments />
-
-      {!data.isDemoData ? <ChartsNotice fromLiveData={data.chartsFromLiveData ?? false} /> : null}
-
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-            {data.isDemoData ? "Example opportunities (demo)" : "Saved opportunities"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {data.isDemoData
-              ? "Illustrative beauty-creator research until you save analyses to your database."
-              : "Loaded from your Supabase project."}
-          </p>
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {data.opportunities.map((opportunity) => (
-            <OpportunityCard key={opportunity.id} opportunity={opportunity} />
-          ))}
-        </div>
-        {!data.isDemoData ? <FeedbackForm opportunities={data.opportunities} /> : null}
-      </section>
+      {data.isDemoData ? (
+        <>
+          {analyzeSection}
+          {savedSection}
+        </>
+      ) : (
+        <>
+          {savedSection}
+          {analyzeSection}
+        </>
+      )}
 
       <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <TrendRadar trends={data.trendRadar} />
@@ -119,11 +129,8 @@ export default async function DashboardPage() {
 
       <section id="ingestion" className="space-y-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Automatic ingestion (advanced)</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            These APIs pull comments from URLs but require Inngest and authentication — not wired to buttons
-            yet. Use &quot;Analyze your comments&quot; above for now.
-          </p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Import more data</h2>
+          <p className="mt-1 text-sm text-slate-600">Instagram export upload or video URLs (when CLI tools are available).</p>
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           <InstagramUpload />

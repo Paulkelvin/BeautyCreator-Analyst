@@ -137,10 +137,10 @@ export function AnalyzeComments() {
 
       setResult(payload);
       if (payload.persisted) {
-        setMessage(
-          "Saved to your dashboard. Refreshing in a moment to show your real opportunities…"
-        );
-        setTimeout(() => window.location.reload(), 2000);
+        setMessage("Saved. Opening your opportunities on the dashboard…");
+        setTimeout(() => {
+          window.location.href = "/dashboard?saved=1#saved-opportunities";
+        }, 1200);
       } else {
         const parts = [
           payload.persistError,
