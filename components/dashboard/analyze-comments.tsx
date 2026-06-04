@@ -137,10 +137,13 @@ export function AnalyzeComments() {
 
       setResult(payload);
       if (payload.persisted) {
-        setMessage("Saved. Opening your opportunities on the dashboard…");
+        const highlight = payload.opportunityId ? `&highlight=${payload.opportunityId}` : "";
+        setMessage(
+          "Saved to your dashboard. Opening My saves at the top of this page…"
+        );
         setTimeout(() => {
-          window.location.href = "/dashboard?saved=1#saved-opportunities";
-        }, 1200);
+          window.location.href = `/dashboard?saved=1${highlight}#saved-opportunities`;
+        }, 900);
       } else {
         const parts = [
           payload.persistError,

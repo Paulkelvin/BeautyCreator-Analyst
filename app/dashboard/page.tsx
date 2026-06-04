@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
+
+type DashboardSearchParams = { saved?: string; highlight?: string };
 import { Globe2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { AnalyzeComments } from "@/components/dashboard/analyze-comments";
 import { InstagramUpload } from "@/components/dashboard/instagram-upload";
@@ -20,11 +22,21 @@ import { getDashboardData } from "@/lib/db/repositories";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: DashboardSearchParams;
+}) {
   const data = await getDashboardData();
+  const highlightId = searchParams?.highlight ?? null;
 
   const savedSection = (
-    <SavedOpportunitiesSection opportunities={data.opportunities} isDemoData={data.isDemoData} />
+    <SavedOpportunitiesSection
+      opportunities={data.opportunities}
+      isDemoData={data.isDemoData}
+      highlightId={highlightId}
+      dataLoadError={data.dataLoadError ?? null}
+    />
   );
 
   const analyzeSection = (
@@ -60,21 +72,28 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <Suspense fallback={null}>
-        <PostSaveNotice />
-      </Suspense>
-
-      <HowItWorks />
+      {!data.isDemoData ? (
+        <>
+          <Suspense fallback={null}>
+            <PostSaveNotice />
+          </Suspense>
+          {savedSection}
+        </>
+      ) : null}
 
       {data.isDemoData ? (
         <>
+          <Suspense fallback={null}>
+            <PostSaveNotice />
+          </Suspense>
+          <HowItWorks />
           {analyzeSection}
           {savedSection}
         </>
       ) : (
         <>
-          {savedSection}
           {analyzeSection}
+          <HowItWorks />
         </>
       )}
 
