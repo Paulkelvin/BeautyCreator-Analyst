@@ -29,6 +29,8 @@ const envSchema = z.object({
   INNGEST_SIGNING_KEY: optionalString,
   /** Supabase Auth user UUID for single-tenant saves (see docs/REAL_DATA.md) */
   APP_OWNER_USER_ID: optionalString,
+  /** Google Cloud API key with YouTube Data API v3 enabled — works on Vercel (no CLI). */
+  YOUTUBE_API_KEY: optionalString,
   YOUTUBE_COMMENT_DOWNLOADER_COMMAND: z.string().default("youtube-comment-downloader"),
   TIKTOK_EXTRACTOR_COMMAND: z.string().default("tiktok-scraper")
 });

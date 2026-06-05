@@ -8,7 +8,8 @@
 | Instagram CSV/XLSX/JSON upload | Yes | Processes inline on Vercel (no Inngest required) |
 | Dashboard opportunity cards | Yes | Shows **your** saved rows when DB has data |
 | Trend radar / segments / graph | From your DB when comments exist | Falls back to sample until you save analyses |
-| YouTube/TikTok URL scrape | Tries on server; usually fails on Vercel | Needs CLI tools or Inngest + worker |
+| YouTube URL scrape | Yes on Vercel | Set `YOUTUBE_API_KEY` — see [URL_INGEST.md](./URL_INGEST.md) |
+| TikTok URL scrape | Often on Vercel | Unofficial Node scraper; may need manual paste if blocked |
 | Performance feedback form | Yes | On dashboard when you have saved opportunities |
 
 ---

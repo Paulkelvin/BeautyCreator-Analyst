@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { env } from "@/lib/env";
+import { extractTikTokCommentsViaNode } from "@/lib/ingestion/tiktok-node";
 import { normalizeRecords } from "@/lib/ingestion/normalization";
 import { type NormalizedComment } from "@/lib/types";
 import { safeNumber } from "@/lib/utils";
@@ -13,6 +14,21 @@ export type TikTokExtractionInput = {
 };
 
 export async function extractTikTokComments(input: TikTokExtractionInput): Promise<NormalizedComment[]> {
+  try {
+    return await extractTikTokCommentsViaNode(input);
+  } catch (nodeError) {
+    const nodeMessage = nodeError instanceof Error ? nodeError.message : String(nodeError);
+    try {
+      return await extractTikTokCommentsViaCli(input);
+    } catch {
+      throw new Error(
+        `${nodeMessage} Install tiktok-scraper CLI locally, or retry later if TikTok blocked the request.`
+      );
+    }
+  }
+}
+
+async function extractTikTokCommentsViaCli(input: TikTokExtractionInput): Promise<NormalizedComment[]> {
   const limit = input.limit ?? 500;
   const { stdout } = await execFileAsync(
     env.TIKTOK_EXTRACTOR_COMMAND,

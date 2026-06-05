@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Database, LineChart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,23 @@ export function UrlIngest({ platform }: { platform: Platform }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [youtubeHint, setYoutubeHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (platform !== "youtube") {
+      return;
+    }
+    fetch("/api/setup-status")
+      .then((res) => res.json())
+      .then((data: { youtubeCommentPull?: string; youtubeSetupHint?: string | null }) => {
+        if (data.youtubeCommentPull === "api") {
+          setYoutubeHint("YouTube API key detected — URL import should work on Vercel.");
+        } else if (data.youtubeSetupHint) {
+          setYoutubeHint(data.youtubeSetupHint);
+        }
+      })
+      .catch(() => undefined);
+  }, [platform]);
 
   const label = platform === "youtube" ? "YouTube" : "TikTok";
   const Icon = platform === "youtube" ? Database : LineChart;
@@ -51,7 +68,10 @@ export function UrlIngest({ platform }: { platform: Platform }) {
           payload.message ??
             `Imported ${payload.comments ?? 0} comments. Refreshing dashboard…`
         );
-        setTimeout(() => window.location.reload(), 2000);
+        const highlight = payload.opportunityId ? `&highlight=${payload.opportunityId}` : "";
+        setTimeout(() => {
+          window.location.href = `/dashboard?saved=1${highlight}#saved-opportunities`;
+        }, 1500);
         return;
       }
 
@@ -72,8 +92,10 @@ export function UrlIngest({ platform }: { platform: Platform }) {
         <Icon className="h-7 w-7 text-violet-600" />
         <CardTitle>{label} URL</CardTitle>
         <CardDescription>
-          Paste a video URL. Works on Vercel only if the comment downloader CLI is available; otherwise
-          use paste-comments or Instagram upload.
+          {platform === "youtube"
+            ? "Paste a public YouTube video URL. On Vercel, set YOUTUBE_API_KEY (YouTube Data API v3) — see docs/URL_INGEST.md."
+            : "Paste a public TikTok video URL. Uses an in-app scraper on Vercel (may break if TikTok changes; retry or paste comments manually)."}
+          {youtubeHint ? <span className="mt-2 block font-medium text-violet-800">{youtubeHint}</span> : null}
         </CardDescription>
       </CardHeader>
       <CardContent>
