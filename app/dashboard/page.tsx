@@ -9,6 +9,7 @@ import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { HowItWorks } from "@/components/dashboard/how-it-works";
 import { PostSaveNotice } from "@/components/dashboard/post-save-notice";
 import { SavedOpportunitiesSection } from "@/components/dashboard/saved-opportunities-section";
+import { CompetitionIntelligence } from "@/components/dashboard/competition-intelligence";
 import { GapIntelligence } from "@/components/dashboard/gap-intelligence";
 import { GeographicInsights } from "@/components/dashboard/geographic-insights";
 import { TopicGraph } from "@/components/dashboard/topic-graph";
@@ -104,6 +105,26 @@ export default async function DashboardPage() {
       <section className="grid gap-6 lg:grid-cols-2">
         <TopicGraph edges={data.graph} />
         <GapIntelligence metrics={data.gapMetrics ?? []} isDemoData={data.isDemoData} />
+      </section>
+
+      <section className="grid gap-6">
+        <CompetitionIntelligence
+          data={
+            data.competition ?? {
+              available: false,
+              canonicalTopic: null,
+              competitionScore: null,
+              supplyScore: null,
+              authorityScore: null,
+              engagementScore: null,
+              freshnessScore: null,
+              confidenceScore: null,
+              demandScore: null,
+              gapScore: null,
+              videos: []
+            }
+          }
+        />
       </section>
 
       <section id="ingestion" className="space-y-4">

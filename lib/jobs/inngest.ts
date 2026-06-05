@@ -1,4 +1,7 @@
 import { Inngest } from "inngest";
+import { applyCompetitionToOpportunities } from "@/lib/competition/apply-to-opportunity";
+import { type CompetitionFetchEvent } from "@/lib/competition/enqueue";
+import { fetchAndStoreCompetitionSnapshot, getValidCompetitionSnapshot } from "@/lib/competition/snapshots";
 import { extractTikTokComments } from "@/lib/ingestion/tiktok";
 import { extractYouTubeComments } from "@/lib/ingestion/youtube";
 import { analyzeAndPersist } from "@/lib/topics/persist-analysis";
@@ -101,4 +104,43 @@ export const ingestExternalSource = inngest.createFunction(
   }
 );
 
-export const functions = [ingestUploadedComments, ingestExternalSource];
+export const fetchYouTubeCompetition = inngest.createFunction(
+  { id: "fetch-youtube-competition", triggers: { event: "competition/fetch.requested" } },
+  async ({ event, step }) => {
+    const data = event.data as CompetitionFetchEvent;
+
+    const cached = await step.run("check cache", async () => getValidCompetitionSnapshot(data.topicId));
+    if (cached) {
+      await step.run("apply cached competition", async () =>
+        applyCompetitionToOpportunities({
+          userId: data.userId,
+          topicId: data.topicId,
+          snapshot: cached,
+          commentCount: data.commentCount
+        })
+      );
+      return { snapshotId: cached.id, cached: true };
+    }
+
+    const stored = await step.run("fetch youtube competition", async () =>
+      fetchAndStoreCompetitionSnapshot({
+        userId: data.userId,
+        topicId: data.topicId,
+        canonicalTopic: data.canonicalTopic
+      })
+    );
+
+    await step.run("apply competition to opportunities", async () =>
+      applyCompetitionToOpportunities({
+        userId: data.userId,
+        topicId: data.topicId,
+        snapshot: stored.snapshot,
+        commentCount: data.commentCount
+      })
+    );
+
+    return { snapshotId: stored.snapshot.id, cached: stored.cached };
+  }
+);
+
+export const functions = [ingestUploadedComments, ingestExternalSource, fetchYouTubeCompetition];

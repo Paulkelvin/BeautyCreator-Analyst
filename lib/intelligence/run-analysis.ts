@@ -1,5 +1,10 @@
 import { understandComment } from "@/lib/ai/comment-understanding";
-import { calculateCompetitionMetrics, calculateSignals } from "@/lib/intelligence/signals";
+import { type StoredCompetitionSnapshot } from "@/lib/competition/types";
+import {
+  buildCompetitionFromYoutubeSnapshot,
+  buildPendingCompetitionMetrics
+} from "@/lib/intelligence/youtube-gap";
+import { calculateSignals } from "@/lib/intelligence/signals";
 import { calculateOpportunityScore, defaultScoringWeights } from "@/lib/intelligence/scoring";
 import { calculateTrendSnapshot } from "@/lib/intelligence/trends";
 import { discoverWhiteSpace, generateContentRecommendations } from "@/lib/intelligence/recommendations";
@@ -9,14 +14,16 @@ export async function runOpportunityAnalysis({
   topic,
   comments,
   modifiers = [],
-  competition = {},
+  youtubeCompetition,
+  competitionPending = false,
   trend,
   weights
 }: {
   topic: string;
   comments: NormalizedComment[];
   modifiers?: string[];
-  competition?: Record<string, number>;
+  youtubeCompetition?: StoredCompetitionSnapshot | null;
+  competitionPending?: boolean;
   trend?: {
     currentMentions: number;
     previousMentions: number;
@@ -26,8 +33,10 @@ export async function runOpportunityAnalysis({
   weights?: Partial<ScoringWeights>;
 }) {
   const understandings = await Promise.all(comments.map((comment) => understandComment(comment)));
-  const competitionMetrics = calculateCompetitionMetrics(competition);
-  const signals = calculateSignals({ comments, understandings, competition: competitionMetrics });
+  const pendingCompetition = competitionPending && !youtubeCompetition;
+  const placeholderCompetition = buildPendingCompetitionMetrics();
+  const signals = calculateSignals({ comments, understandings, competition: placeholderCompetition });
+
   const trendSnapshot = calculateTrendSnapshot(
     trend ?? {
       currentMentions: comments.length,
@@ -39,11 +48,31 @@ export async function runOpportunityAnalysis({
   signals.trendVelocity = trendSnapshot.monthlyGrowth;
   signals.trendAcceleration = trendSnapshot.acceleration;
 
-  const scores = calculateOpportunityScore({
+  const competitionMetrics = youtubeCompetition
+    ? buildCompetitionFromYoutubeSnapshot(
+        youtubeCompetition,
+        signals,
+        comments.length,
+        trendSnapshot.monthlyGrowth
+      ).competition
+    : placeholderCompetition;
+
+  let scores = calculateOpportunityScore({
     signals,
     competition: competitionMetrics,
-    weights: { ...defaultScoringWeights, ...weights }
+    weights: { ...defaultScoringWeights, ...weights },
+    competitionPending: pendingCompetition
   });
+
+  if (youtubeCompetition) {
+    const { demandScore, gapScore } = buildCompetitionFromYoutubeSnapshot(
+      youtubeCompetition,
+      signals,
+      comments.length,
+      trendSnapshot.monthlyGrowth
+    );
+    scores = { ...scores, demandScore, gapScore, competitionScore: youtubeCompetition.competitionScore };
+  }
   const audienceSegments = Array.from(new Set(understandings.map((item) => item.audienceType)));
 
   return {
@@ -56,6 +85,8 @@ export async function runOpportunityAnalysis({
     audienceSegments,
     whiteSpace: discoverWhiteSpace(topic, modifiers),
     recommendations: generateContentRecommendations(topic, audienceSegments),
-    understandings
+    understandings,
+    competitionPending: pendingCompetition,
+    commentCount: comments.length
   };
 }

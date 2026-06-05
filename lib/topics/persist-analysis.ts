@@ -1,3 +1,6 @@
+import { requestCompetitionFetch } from "@/lib/competition/enqueue";
+import { getValidCompetitionSnapshot } from "@/lib/competition/snapshots";
+import { isYouTubeCompetitionConfigured } from "@/lib/competition/youtube-fetch";
 import { resolveOrCreateTopic, resolveTopicsForLabels } from "@/lib/topics/registry";
 import { recordTrendSnapshot, getTrendInputForTopic } from "@/lib/topics/trend-snapshots";
 import { runOpportunityAnalysis } from "@/lib/intelligence/run-analysis";
@@ -17,7 +20,6 @@ export async function analyzeAndPersist({
   topic,
   comments,
   modifiers,
-  competition,
   weights,
   source
 }: {
@@ -25,7 +27,6 @@ export async function analyzeAndPersist({
   topic: string;
   comments: NormalizedComment[];
   modifiers?: string[];
-  competition?: Record<string, number>;
   weights?: Record<string, number>;
   source?: {
     platform: "youtube" | "tiktok" | "instagram";
@@ -37,12 +38,15 @@ export async function analyzeAndPersist({
 }) {
   const canonicalTopic = await resolveOrCreateTopic(userId, topic);
   const trend = (await getTrendInputForTopic(canonicalTopic.id)) ?? undefined;
+  const youtubeCompetition = await getValidCompetitionSnapshot(canonicalTopic.id);
+  const competitionPending = isYouTubeCompetitionConfigured() && !youtubeCompetition;
 
   const analysis = await runOpportunityAnalysis({
     topic: canonicalTopic.label,
     comments,
     modifiers,
-    competition,
+    youtubeCompetition,
+    competitionPending,
     trend,
     weights: weights as Record<string, number> | undefined
   });
@@ -58,9 +62,18 @@ export async function analyzeAndPersist({
 
   await recordTrendSnapshot(userId, canonicalTopic.id);
 
+  const competitionFetch = await requestCompetitionFetch({
+    userId,
+    topicId: canonicalTopic.id,
+    canonicalTopic: canonicalTopic.label,
+    opportunityId: saved.opportunityId,
+    commentCount: comments.length
+  });
+
   return {
     analysis,
     canonicalTopic,
+    competitionFetch,
     ...saved
   };
 }

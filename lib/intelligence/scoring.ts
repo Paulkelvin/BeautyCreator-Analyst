@@ -30,11 +30,13 @@ export const defaultScoringWeights: ScoringWeights = {
 export function calculateOpportunityScore({
   signals,
   competition,
-  weights = defaultScoringWeights
+  weights = defaultScoringWeights,
+  competitionPending = false
 }: {
   signals: SignalMetrics;
   competition: CompetitionMetrics;
   weights?: ScoringWeights;
+  competitionPending?: boolean;
 }) {
   const demand = clampScore(
     signals.questionDensity * 0.24 +
@@ -43,6 +45,9 @@ export function calculateOpportunityScore({
       signals.audienceEngagement * 0.18 +
       signals.crossPlatformConfirmation * 0.18
   );
+
+  const gapContribution = competitionPending ? 0 : competition.gapScore * weights.gapScore;
+  const deficitContribution = competitionPending ? 0 : competition.contentQualityDeficitScore * weights.contentQualityDeficit;
 
   const positive =
     demand * weights.demand +
@@ -57,21 +62,24 @@ export function calculateOpportunityScore({
     signals.trendAcceleration * weights.trendAcceleration +
     signals.creatorAuthority * weights.creatorAuthority +
     signals.crossPlatformConfirmation * weights.crossPlatformValidation +
-    competition.gapScore * weights.gapScore +
-    competition.contentQualityDeficitScore * weights.contentQualityDeficit +
+    gapContribution +
+    deficitContribution +
     signals.strategicFit * weights.strategicFit +
     signals.actionability * weights.actionability;
 
-  const negative =
-    competition.competitionScore * weights.competition +
-    competition.difficultyScore * weights.difficulty +
-    competition.contentDensity * weights.contentSaturation;
+  const negative = competitionPending
+    ? 0
+    : competition.competitionScore * weights.competition +
+      competition.difficultyScore * weights.difficulty +
+      competition.contentDensity * weights.contentSaturation;
 
   const positiveWeight = Object.entries(weights)
     .filter(([key]) => !["competition", "difficulty", "contentSaturation"].includes(key))
     .reduce((sum, [, value]) => sum + value, 0);
-  const negativeWeight = weights.competition + weights.difficulty + weights.contentSaturation;
-  const raw = positive / positiveWeight - negative / negativeWeight * 0.42;
+  const negativeWeight = competitionPending
+    ? 1
+    : weights.competition + weights.difficulty + weights.contentSaturation;
+  const raw = positive / positiveWeight - (negative / negativeWeight) * 0.42;
 
   return {
     demandScore: demand,

@@ -144,8 +144,12 @@ function opportunityPayload(userId: string, topicId: string, analysis: AnalysisR
       signals: analysis.signals,
       competition: analysis.competition,
       whiteSpace: analysis.whiteSpace,
+      competitionPending: analysis.competitionPending ?? false,
+      commentCount: analysis.commentCount ?? 0,
       gapBreakdown: {
+        demandScore: analysis.scores.demandScore,
         gapScore: analysis.scores.gapScore,
+        competitionScore: analysis.scores.competitionScore,
         contentQualityDeficit: analysis.competition.contentQualityDeficitScore,
         whiteSpaceScore: analysis.competition.whiteSpaceScore,
         difficultyScore: analysis.scores.difficultyScore,
@@ -321,7 +325,8 @@ export async function getDashboardData() {
     })) as Opportunity[],
     trendRadar: insights.trendRadar,
     segments: insights.segments,
-    graph: insights.graph
+    graph: insights.graph,
+    competition: insights.competition
   };
 }
 

@@ -31,6 +31,30 @@ export type GeoRegionRow = {
   share: number;
 };
 
+export type CompetitionVideoRow = {
+  youtubeVideoId: string;
+  title: string;
+  channelName: string;
+  channelSubscribers: number | null;
+  views: number;
+  likes: number;
+  comments: number;
+};
+
+export type CompetitionDashboardData = {
+  available: boolean;
+  canonicalTopic: string | null;
+  competitionScore: number | null;
+  supplyScore: number | null;
+  authorityScore: number | null;
+  engagementScore: number | null;
+  freshnessScore: number | null;
+  confidenceScore: number | null;
+  demandScore: number | null;
+  gapScore: number | null;
+  videos: CompetitionVideoRow[];
+};
+
 function titleCase(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -55,11 +79,17 @@ function buildGapMetricsFromReasoning(reasoning: Record<string, unknown> | null)
   const difficulty = breakdown?.difficultyScore ?? competition?.difficultyScore ?? 0;
   const commercial = breakdown?.commercialScore ?? 0;
 
+  const demandScore = breakdown?.demandScore;
+  const competitionScore = breakdown?.competitionScore ?? competition?.competitionScore;
+
   return [
     {
       label: "Gap score",
       value: String(Math.round(gapScore)),
-      description: "Higher means stronger content opportunity vs modeled competition."
+      description:
+        demandScore !== undefined && competitionScore !== undefined
+          ? `Demand (${Math.round(demandScore)}) minus YouTube competition (${Math.round(competitionScore)}).`
+          : "Higher means stronger content opportunity vs modeled competition."
     },
     {
       label: "Content quality deficit",
@@ -84,7 +114,7 @@ export async function buildDashboardInsights(userId?: string) {
 
   let oppQuery = supabase
     .from("opportunities")
-    .select("title, momentum_score, trend_classification, opportunity_score, topic_id, reasoning")
+    .select("title, momentum_score, trend_classification, opportunity_score, topic_id, reasoning, demand_score, gap_score")
     .order("opportunity_score", { ascending: false })
     .limit(10);
 
@@ -240,13 +270,78 @@ export async function buildDashboardInsights(userId?: string) {
   const topReasoning = (opportunities?.[0]?.reasoning ?? null) as Record<string, unknown> | null;
   const gapMetrics = buildGapMetricsFromReasoning(topReasoning);
 
+  let competition: CompetitionDashboardData = {
+    available: false,
+    canonicalTopic: null,
+    competitionScore: null,
+    supplyScore: null,
+    authorityScore: null,
+    engagementScore: null,
+    freshnessScore: null,
+    confidenceScore: null,
+    demandScore: null,
+    gapScore: null,
+    videos: []
+  };
+
+  const topTopicId = opportunities?.[0]?.topic_id ? String(opportunities[0].topic_id) : null;
+  if (topTopicId) {
+    const now = new Date().toISOString();
+    const { data: snapshot } = await supabase
+      .from("competition_snapshots")
+      .select("*")
+      .eq("topic_id", topTopicId)
+      .gt("expires_at", now)
+      .maybeSingle();
+
+    if (snapshot) {
+      const { data: videos } = await supabase
+        .from("competitor_results")
+        .select(
+          "youtube_video_id, title, channel_name, channel_subscribers, views, likes, comments"
+        )
+        .eq("snapshot_id", snapshot.id)
+        .order("competition_contribution", { ascending: false })
+        .limit(5);
+
+      const breakdown = topReasoning?.gapBreakdown as Record<string, number> | undefined;
+
+      competition = {
+        available: true,
+        canonicalTopic: String(snapshot.canonical_topic),
+        competitionScore: Number(snapshot.competition_score),
+        supplyScore: Number(snapshot.supply_score),
+        authorityScore: Number(snapshot.authority_score),
+        engagementScore: Number(snapshot.engagement_score),
+        freshnessScore: Number(snapshot.freshness_score),
+        confidenceScore: Number(snapshot.confidence_score),
+        demandScore: breakdown?.demandScore ?? Number(opportunities?.[0]?.demand_score ?? 0),
+        gapScore: breakdown?.gapScore ?? Number(opportunities?.[0]?.gap_score ?? 0),
+        videos: (videos ?? []).map((row) => ({
+          youtubeVideoId: String(row.youtube_video_id),
+          title: String(row.title),
+          channelName: String(row.channel_name),
+          channelSubscribers: row.channel_subscribers === null ? null : Number(row.channel_subscribers),
+          views: Number(row.views),
+          likes: Number(row.likes),
+          comments: Number(row.comments)
+        }))
+      };
+    }
+  }
+
   return {
     trendRadar: trendRadar.length ? trendRadar : sampleDashboardData.trendRadar,
     segments: segments.length ? segments : sampleDashboardData.segments,
     graph: uniqueGraph.length ? uniqueGraph : sampleDashboardData.graph,
     gapMetrics,
     geoRegions,
+    competition,
     chartsFromLiveData:
-      trendRadar.length > 0 || segments.length > 0 || uniqueGraph.length > 0 || gapMetrics.length > 0
+      trendRadar.length > 0 ||
+      segments.length > 0 ||
+      uniqueGraph.length > 0 ||
+      gapMetrics.length > 0 ||
+      competition.available
   };
 }

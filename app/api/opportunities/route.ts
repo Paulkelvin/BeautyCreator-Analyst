@@ -13,7 +13,6 @@ const schema = z.object({
   topic: z.string().min(2),
   comments: z.array(normalizedCommentSchema).min(1).max(200),
   modifiers: z.array(z.string()).optional(),
-  competition: z.record(z.string(), z.number()).optional(),
   trend: z
     .object({
       currentMentions: z.number(),
@@ -39,7 +38,6 @@ export async function POST(request: NextRequest) {
           topic: body.topic,
           comments: body.comments,
           modifiers: body.modifiers,
-          competition: body.competition,
           weights: body.weights as Record<string, number> | undefined
         });
 
@@ -58,6 +56,8 @@ export async function POST(request: NextRequest) {
           topicId: saved.canonicalTopic.id,
           canonicalTopic: saved.canonicalTopic,
           deduplicated: saved.deduplicated,
+          competitionPending: saved.analysis.competitionPending ?? false,
+          competitionFetch: saved.competitionFetch,
           persistError: null,
           persistHint: saved.deduplicated
             ? "Updated existing opportunity for this canonical topic (no duplicate row)."
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       topic: body.topic,
       comments: body.comments,
       modifiers: body.modifiers,
-      competition: body.competition,
+      competitionPending: true,
       trend: trendInput,
       weights: body.weights as Record<string, number> | undefined
     });
