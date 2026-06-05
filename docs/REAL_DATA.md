@@ -61,6 +61,13 @@ The profile row is created automatically on first save (trigger + `ensureProfile
 - [ ] Run one paste-analysis → wait for auto-refresh → confirm **Saved opportunities**
 - [ ] Optional: `OPENAI_API_KEY` for better comment understanding
 
+### Topic intelligence (migration `003_topic_intelligence.sql`)
+
+- Embeddings + `topics` table + `match_topics` RPC
+- Opportunity dedupe by `topic_id`
+- `trend_snapshots` from real comment counts per month
+- Dashboard gap/geo from saved data (see `docs/WORKING_EXAMPLES.md`)
+
 ### Phase B — Engineering (next builds)
 
 | Item | Why |
