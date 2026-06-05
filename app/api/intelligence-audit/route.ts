@@ -31,7 +31,7 @@ export async function GET() {
     supabase
       .from("competition_snapshots")
       .select(
-        "id, topic_id, canonical_topic, competition_score, supply_score, authority_score, freshness_score, confidence_score, engagement_score, result_count, fetched_at"
+        "id, topic_id, canonical_topic, competition_score, supply_score, authority_score, freshness_score, confidence_score, engagement_score, fetched_at"
       )
       .eq("user_id", ownerId)
       .order("fetched_at", { ascending: false }),
@@ -103,8 +103,7 @@ export async function GET() {
         supplyScore: row.supply_score,
         authorityScore: row.authority_score,
         freshnessScore: row.freshness_score,
-        confidenceScore: row.confidence_score,
-        resultCount: row.result_count
+        confidenceScore: row.confidence_score
       }))
     },
     topics: topicsRes.data ?? [],
