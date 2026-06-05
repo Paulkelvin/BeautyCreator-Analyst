@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Production has **limited but real** intelligence data: 7 canonical topics, 8 opportunity rows, 5 competition snapshots, 100 competitor results. Several scoring and data-quality issues were confirmed. The temporary Supabase `YOUTUBE_API_KEY` fallback has been removed; production must read the key from Vercel only.
+Production has **limited but real** intelligence data: 7 canonical topics, 12 opportunity rows, 5 competition snapshots, 100 competitor results. Several scoring and data-quality issues were confirmed. The temporary Supabase `YOUTUBE_API_KEY` fallback has been removed; production must read the key from Vercel only.
 
 **Critical findings:**
 1. Competition snapshot `confidence_score` is always **100** (formula bug).
@@ -151,17 +151,17 @@ confidence = clamp(
 gap = clamp(demand - competition, 0, 100)
 ```
 
-### Production distribution (8 opportunities)
+### Production distribution (12 opportunities)
 
 | Gap score | Count | % |
 |-----------|-------|---|
-| 0 | 3 | 37.5% |
-| 59 | 5 | 62.5% |
+| 0 | 5 | 41.7% |
+| 59 | 7 | 58.3% |
 
 | Stat | Value |
 |------|-------|
-| Avg gap | 34.4 |
-| Zero-gap rate | **37.5%** |
+| Avg gap | 34 |
+| Zero-gap rate | **41.7%** |
 
 ### Problem confirmed
 
@@ -232,14 +232,24 @@ gap = clamp(demand - competition + 20, 0, 100)  // 20-point floor
 
 ### Deployment
 - **Pre-audit deployment:** `dpl_2woDkwARm1Bt1kz7grHNr2itCw8Q` @ `92e65fe`
-- **Post-fallback-removal:** See PR / latest production deployment ID after merge.
+- **Post-fallback-removal:** `dpl_HqpjVojgTvUSGFGj37YXnECqRcrC` @ `704d11a` (plus `e06d454` audit fix)
 
-### API evidence
+### API evidence (verified 2026-06-05)
 
-```bash
-curl https://beauty-creator-analyst.vercel.app/api/setup-status
-curl https://beauty-creator-analyst.vercel.app/api/intelligence-audit
-curl https://beauty-creator-analyst.vercel.app/api/dashboard-data
+```json
+// GET /api/setup-status
+{
+  "youtubeCompetitionConfigured": true,
+  "youtubeKeySource": "vercel"
+}
+
+// GET /api/intelligence-audit (highlights)
+{
+  "counts": { "topics": 7, "opportunities": 12, "competitionSnapshots": 5, "competitorResults": 100 },
+  "runtimeSecrets": { "youtubeKeyInSupabase": false },
+  "gapDistribution": { "zeroGapPercent": 42, "avgGap": 34 },
+  "competitionConfidence": { "allConfidence100": true }
+}
 ```
 
 ### SQL evidence (run in Supabase SQL editor)
