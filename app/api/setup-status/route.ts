@@ -13,7 +13,7 @@ export async function GET() {
     appOwnerConfigured: Boolean(config.appOwnerUserId),
     supabaseUrlConfigured: Boolean(config.supabaseUrl),
     serviceRoleConfigured: Boolean(config.serviceRoleKey),
-    youtubeCompetitionConfigured: isYouTubeCompetitionConfigured(),
+    youtubeCompetitionConfigured: await isYouTubeCompetitionConfigured(),
     hint: config.reason
   });
 }

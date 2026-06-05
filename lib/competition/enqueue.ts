@@ -13,7 +13,7 @@ export type CompetitionFetchEvent = {
 };
 
 export async function requestCompetitionFetch(event: CompetitionFetchEvent) {
-  if (!isYouTubeCompetitionConfigured()) {
+  if (!(await isYouTubeCompetitionConfigured())) {
     return { status: "skipped", reason: "YOUTUBE_API_KEY not configured" as const };
   }
 

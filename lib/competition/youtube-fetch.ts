@@ -1,4 +1,4 @@
-import { readRuntimeEnv } from "@/lib/runtime-env";
+import { resolveServerSecret } from "@/lib/platform-secrets";
 import { type YouTubeVideoResult } from "@/lib/competition/types";
 
 type YouTubeSearchItem = {
@@ -26,12 +26,12 @@ type YouTubeChannelItem = {
   statistics?: { subscriberCount?: string };
 };
 
-function getApiKey() {
-  return readRuntimeEnv("YOUTUBE_API_KEY");
+async function getApiKey() {
+  return resolveServerSecret("YOUTUBE_API_KEY");
 }
 
 async function youtubeGet<T>(path: string, params: Record<string, string>) {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) {
     throw new Error("YOUTUBE_API_KEY is not configured on the server.");
   }
@@ -51,8 +51,8 @@ async function youtubeGet<T>(path: string, params: Record<string, string>) {
   return (await response.json()) as T;
 }
 
-export function isYouTubeCompetitionConfigured() {
-  return Boolean(getApiKey());
+export async function isYouTubeCompetitionConfigured() {
+  return Boolean(await getApiKey());
 }
 
 /** Fetch top 20 YouTube videos for a canonical topic query. */

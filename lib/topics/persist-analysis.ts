@@ -39,7 +39,7 @@ export async function analyzeAndPersist({
   const canonicalTopic = await resolveOrCreateTopic(userId, topic);
   const trend = (await getTrendInputForTopic(canonicalTopic.id)) ?? undefined;
   const youtubeCompetition = await getValidCompetitionSnapshot(canonicalTopic.id);
-  const competitionPending = isYouTubeCompetitionConfigured() && !youtubeCompetition;
+  const competitionPending = (await isYouTubeCompetitionConfigured()) && !youtubeCompetition;
 
   const analysis = await runOpportunityAnalysis({
     topic: canonicalTopic.label,
