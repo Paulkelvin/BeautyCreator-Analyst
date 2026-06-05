@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { isYouTubeCompetitionConfigured } from "@/lib/competition/youtube-fetch";
+import {
+  getYouTubeApiKeySource,
+  isYouTubeCompetitionConfigured
+} from "@/lib/competition/youtube-fetch";
 import { getPersistConfig } from "@/lib/runtime-env";
 
 export const runtime = "nodejs";
@@ -13,7 +16,8 @@ export async function GET() {
     appOwnerConfigured: Boolean(config.appOwnerUserId),
     supabaseUrlConfigured: Boolean(config.supabaseUrl),
     serviceRoleConfigured: Boolean(config.serviceRoleKey),
-    youtubeCompetitionConfigured: await isYouTubeCompetitionConfigured(),
+    youtubeCompetitionConfigured: isYouTubeCompetitionConfigured(),
+    youtubeKeySource: getYouTubeApiKeySource(),
     hint: config.reason
   });
 }

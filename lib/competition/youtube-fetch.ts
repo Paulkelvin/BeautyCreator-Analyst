@@ -1,4 +1,4 @@
-import { resolveServerSecret } from "@/lib/platform-secrets";
+import { readRuntimeEnv } from "@/lib/runtime-env";
 import { type YouTubeVideoResult } from "@/lib/competition/types";
 
 type YouTubeSearchItem = {
@@ -26,8 +26,8 @@ type YouTubeChannelItem = {
   statistics?: { subscriberCount?: string };
 };
 
-async function getApiKey() {
-  return resolveServerSecret("YOUTUBE_API_KEY");
+function getApiKey() {
+  return readRuntimeEnv("YOUTUBE_API_KEY");
 }
 
 async function youtubeGet<T>(path: string, params: Record<string, string>) {
@@ -51,8 +51,12 @@ async function youtubeGet<T>(path: string, params: Record<string, string>) {
   return (await response.json()) as T;
 }
 
-export async function isYouTubeCompetitionConfigured() {
-  return Boolean(await getApiKey());
+export function isYouTubeCompetitionConfigured() {
+  return Boolean(getApiKey());
+}
+
+export function getYouTubeApiKeySource() {
+  return getApiKey() ? "vercel" : "missing";
 }
 
 /** Fetch top 20 YouTube videos for a canonical topic query. */
